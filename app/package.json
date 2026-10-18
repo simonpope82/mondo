@@ -1,0 +1,36 @@
+{
+  "name": "mondo",
+  "version": "1.0.0",
+  "description": "mondo \u2013 a monday.com-style work app (boards, map, phone app)",
+  "main": "server/index.js",
+  "scripts": {
+    "build": "vite build",
+    "start": "node server/index.js",
+    "dev": "vite",
+    "serve": "vite build && node server/index.js",
+    "test": "node tests/e2e.mjs",
+    "create-admin": "node server/create-admin.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "lucide-react": "^1.59.0",
+    "playwright": "^1.64.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.21"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^11.10.0",
+    "express": "^5.3.0",
+    "leaflet": "^1.9.4",
+    "web-push": "^3.6.7"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}

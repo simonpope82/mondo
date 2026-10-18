@@ -1,0 +1,19 @@
+# dependencies / build output
+node_modules/
+app/dist/
+# runtime data (SQLite DB, VAPID keys) – never commit
+app/data/
+data/
+*.db
+*.db-*
+vapid.json
+# secrets & logs
+admin-password.txt
+.env
+.env.*
+*.log
+tunnel.log
+# monday survey contains real customer data – keep it on the box only
+survey/
+# test output
+test-results/
