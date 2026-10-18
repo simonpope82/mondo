@@ -1,0 +1,41 @@
+# Render Blueprint for mondo – PAID setup for later: Starter web service + 1 GB persistent disk (data survives deploys).
+# Use it by renaming to render.yaml (or Blueprint file path in the dashboard). About $7.25/month.
+services:
+  - type: web
+    name: mondo
+    runtime: node
+    rootDir: app
+    plan: 0.5c-512mb          # "Starter": 0.5 CPU / 512 MB, $7/month. (Free plan cannot have a disk.)
+    region: frankfurt         # closest to Norway
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    disk:
+      name: mondo-data
+      mountPath: /var/data    # database, VAPID keys live here and survive deploys
+      sizeGB: 1               # $0.25/month; can grow later, never shrink
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATA_DIR
+        value: /var/data
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "1"            # Render puts one proxy in front – needed for real client IPs (login rate limit)
+      - key: COOKIE_SECURE
+        value: "1"            # login cookie only over HTTPS
+      - key: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+        value: "1"
+      - key: ADMIN_EMAIL
+        value: simpope@gmail.com
+      - key: ADMIN_NAME
+        value: Simon
+      - key: ADMIN_PASSWORD   # only used on the very first start, when there are no users yet
+        sync: false
+      - key: SEED_DEMO        # "1" = add the made-up demo boards on first start, "0" = start empty
+        value: "1"
+      - key: VAPID_SUBJECT
+        value: mailto:simpope@gmail.com
+      # VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY are optional: if not set, mondo makes a pair once and keeps it on the disk.

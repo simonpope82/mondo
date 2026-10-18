@@ -1,41 +1,47 @@
-# Render Blueprint for mondo – one web service + a 1 GB persistent disk for the SQLite database.
-# Render dashboard → New → Blueprint → pick this repo. It will ask for the values marked sync: false.
+# Render Blueprint for mondo – FREE test plan (no disk).
+# ⚠️ Free web services have no persistent disk: the database lives on the temporary filesystem and is reset
+#    on every deploy, restart and idle spin-down (after ~15 min without visits). On each fresh start mondo
+#    re-creates the made-up demo boards (SEED_DEMO=1) and the admin user from ADMIN_EMAIL / ADMIN_PASSWORD.
+#    Everyone has to log in again after a reset. For the paid setup with a disk see render-paid-disk.yaml.
 services:
   - type: web
     name: mondo
     runtime: node
     rootDir: app
-    plan: 0.5c-512mb          # "Starter": 0.5 CPU / 512 MB, $7/month. (Free plan cannot have a disk.)
-    region: frankfurt         # closest to Norway
+    plan: free
+    region: frankfurt
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
-    disk:
-      name: mondo-data
-      mountPath: /var/data    # database, VAPID keys live here and survive deploys
-      sizeGB: 1               # $0.25/month; can grow later, never shrink
     envVars:
       - key: NODE_VERSION
         value: "20"
       - key: DATA_DIR
-        value: /var/data
+        value: /tmp/mondo-data    # temporary – wiped on restart
       - key: HOST
         value: 0.0.0.0
       - key: TRUST_PROXY
-        value: "1"            # Render puts one proxy in front – needed for real client IPs (login rate limit)
+        value: "1"
       - key: COOKIE_SECURE
-        value: "1"            # login cookie only over HTTPS
+        value: "1"
       - key: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD
+        value: "1"
+      - key: SEED_DEMO
         value: "1"
       - key: ADMIN_EMAIL
         value: simpope@gmail.com
       - key: ADMIN_NAME
         value: Simon
-      - key: ADMIN_PASSWORD   # only used on the very first start, when there are no users yet
+      - key: ADMIN_PASSWORD       # used on every fresh start (the DB is new each time)
         sync: false
-      - key: SEED_DEMO        # "1" = add the made-up demo boards on first start, "0" = start empty
-        value: "1"
+      - key: GEOCODE_CONTACT
+        value: simpope@gmail.com
       - key: VAPID_SUBJECT
         value: mailto:simpope@gmail.com
-      # VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY are optional: if not set, mondo makes a pair once and keeps it on the disk.
+      # Set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY so phone-alert keys stay the same across resets
+      # (deploy-render.sh does this). Without them new keys are made on each start and phones must re-enable alerts.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false

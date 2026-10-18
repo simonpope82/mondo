@@ -45,18 +45,24 @@ export function InstallBanner() {
 // ---- web push ----
 const b64 = (s) => { const p = '='.repeat((4 - (s.length % 4)) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map((c) => c.charCodeAt(0))); };
 export const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+// After a server restart with fresh keys (Render free plan) an old browser subscription no longer matches – detect that.
+const sameKey = (sub, publicKey) => { try { const a = new Uint8Array(sub.options.applicationServerKey), b = b64(publicKey); return a.length === b.length && a.every((x, i) => x === b[i]); } catch { return true; } };
 export async function pushState() {
   if (!pushSupported()) return isIOS() && !isStandalone() ? 'ios-install' : 'unsupported';
-  const { enabled } = await api.get('/push/key'); if (!enabled) return 'server-off';
+  const { enabled, publicKey } = await api.get('/push/key'); if (!enabled) return 'server-off';
   if (Notification.permission === 'denied') return 'denied';
   const reg = await navigator.serviceWorker.getRegistration(); const sub = reg && (await reg.pushManager.getSubscription());
-  return sub ? 'on' : 'off';
+  if (!sub || !sameKey(sub, publicKey)) return 'off';
+  api.post('/push/subscribe', sub.toJSON()).catch(() => {}); // re-register in case the server's database was reset
+  return 'on';
 }
 export async function enablePush() {
   const perm = await Notification.requestPermission(); if (perm !== 'granted') return 'denied';
   const { publicKey } = await api.get('/push/key');
   const reg = await navigator.serviceWorker.ready;
-  const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(publicKey) }));
+  let sub = await reg.pushManager.getSubscription();
+  if (sub && !sameKey(sub, publicKey)) { await sub.unsubscribe(); sub = null; }
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(publicKey) });
   await api.post('/push/subscribe', sub.toJSON()); return 'on';
 }
 export async function disablePush() {
