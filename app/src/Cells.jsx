@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Popover, Avatar, ColorGrid } from './ui.jsx';
-import { PALETTE, fmtDate, todayStr } from './constants.js';
+import { PALETTE, fmtDate, todayStr, isoWeek, weekAdd, fmtWeek } from './constants.js';
 import { uid } from './api.js';
 import { LocationCell, locText } from './Location.jsx';
 import { Plus, Pencil, Trash2, Check, X, ExternalLink, UserPlus, AlertCircle, Play, Pause, Network } from 'lucide-react';
@@ -77,6 +77,25 @@ function PeopleCell({ value, onChange, ctx }) {
               <button className="menu-item" onClick={async () => { const p = await ctx.addPerson(q.trim()); onChange([...ids, p.id]); setQ(''); }}><Plus size={16} /> Add “{q.trim()}”</button>
             )}
           </div>
+        </Popover>
+      )}
+    </>
+  );
+}
+
+function WeekCell({ value, onChange }) {
+  const ref = useRef(); const [open, setOpen] = useState(false);
+  const base = isoWeek(); const weeks = Array.from({ length: 30 }, (_, k) => weekAdd(base, k - 4));
+  return (
+    <>
+      <div ref={ref} className="cell-center" onClick={() => setOpen(true)} data-testid="week-cell">
+        {value ? <span className={'date-text' + (value === base ? ' week-now' : '')}>🗓️ {fmtWeek(value)}</span> : <span className="ghost-plus"><Plus size={14} /></span>}
+      </div>
+      {open && (
+        <Popover anchor={ref.current} onClose={() => setOpen(false)} width={230} align="center">
+          <div className="mini-label">Pick a week</div>
+          <div className="week-grid">{weeks.map((w) => <button key={w} className={'week-btn' + (w === value ? ' on' : '') + (w === base ? ' now' : '')} onClick={() => { onChange(w); setOpen(false); }}>{fmtWeek(w).replace('Uke ', '')}</button>)}</div>
+          {value && <button className="btn small ghost" onClick={() => { onChange(null); setOpen(false); }}><Trash2 size={13} /> Clear</button>}
         </Popover>
       )}
     </>
@@ -231,6 +250,7 @@ export function Cell({ col, value, onChange, ctx, onUpdateColumn }) {
     case 'status': case 'priority': return <StatusCell col={col} value={value} onChange={onChange} onUpdateColumn={onUpdateColumn} />;
     case 'people': return <PeopleCell value={value} onChange={onChange} ctx={ctx} />;
     case 'date': return <DateCell value={value} onChange={onChange} ctx={ctx} />;
+    case 'week': return <WeekCell value={value} onChange={onChange} />;
     case 'timeline': return <TimelineCell value={value} onChange={onChange} ctx={ctx} />;
     case 'dropdown': return <DropdownCell col={col} value={value} onChange={onChange} onUpdateColumn={onUpdateColumn} />;
     case 'checkbox': return <div className="cell-center" onClick={() => onChange(!value)} data-testid="checkbox-cell"><span className={'check' + (value ? ' on' : '')}>{value && <Check size={14} strokeWidth={3} />}</span></div>;
@@ -282,6 +302,7 @@ export function displayValue(c, v, people) {
   if (c.type === 'dropdown') return (v || []).map((id) => c.settings.options.find((o) => o.id === id)?.label).filter(Boolean).join(', ');
   if (c.type === 'people') return (v || []).map((id) => people.find((p) => p.id === id)?.name).filter(Boolean).join(', ');
   if (c.type === 'date') return fmtDate(v);
+  if (c.type === 'week') return fmtWeek(v);
   if (c.type === 'timeline') return `${fmtDate(v.from)} – ${fmtDate(v.to)}`;
   if (c.type === 'checkbox') return v ? '✔' : '';
   if (c.type === 'link') return v.text || v.url;
@@ -291,7 +312,21 @@ export function displayValue(c, v, people) {
   return String(v);
 }
 
+function SubMirror({ col, ctx }) {
+  const src = (ctx.board.sub_columns || []).find((c) => c.id === col.settings.colId);
+  const subs = (ctx.subsByParent && ctx.subsByParent[ctx.item?.id]) || [];
+  if (!src || !subs.length) return <div className="cell-text muted">—</div>;
+  if (src.type === 'status') {
+    const counts = {}; subs.forEach((s) => { const k = s.vals[src.id] || ''; counts[k] = (counts[k] || 0) + 1; });
+    const parts = Object.entries(counts).map(([id, n]) => ({ l: src.settings.labels.find((x) => x.id === id), n }));
+    return <div className="cell-center"><div className="battery" title={parts.map((p) => `${p.l?.label || '—'}: ${p.n}`).join('\n')} data-testid="sub-mirror">
+      {parts.map((p, k) => <span key={k} style={{ flex: p.n, background: p.l?.color || '#c4c4c4' }}>{parts.length === 1 && p.l?.label}</span>)}</div></div>;
+  }
+  return <div className="cell-text mirror-text">{subs.map((s) => displayValue(src, s.vals[src.id], ctx.people)).filter(Boolean).join(', ')}</div>;
+}
+
 function MirrorCell({ col, ctx }) {
+  if (col.settings.connectCol === '__sub') return <SubMirror col={col} ctx={ctx} />;
   const cc = ctx.board.columns.find((c) => c.id === col.settings.connectCol);
   const other = cc && ctx.linked?.[cc.settings.boardId];
   if (!other) return <div className="cell-text muted">—</div>;

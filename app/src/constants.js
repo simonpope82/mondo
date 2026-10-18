@@ -1,4 +1,4 @@
-import { Timer, Network, Copy as Mirror, History, Clock, MapPin, Type, CircleDot, Users, Calendar, GanttChart, Hash, ListChecks, CheckSquare, Flag, Link2, AlignLeft, Phone, Mail } from 'lucide-react';
+import { CalendarDays, Timer, Network, Copy as Mirror, History, Clock, MapPin, Type, CircleDot, Users, Calendar, GanttChart, Hash, ListChecks, CheckSquare, Flag, Link2, AlignLeft, Phone, Mail } from 'lucide-react';
 
 export const PALETTE = ['#00c875', '#9cd326', '#cab641', '#ffcb00', '#fdab3d', '#ff642e', '#e2445c', '#bb3354', '#ff158a', '#ff5ac4', '#a25ddc', '#784bd1', '#579bfc', '#0086c0', '#66ccff', '#037f4c', '#225091', '#333333', '#7f5347', '#c4c4c4'];
 export const GROUP_COLORS = ['#579bfc', '#00c875', '#a25ddc', '#fdab3d', '#e2445c', '#ff642e', '#037f4c', '#9cd326', '#ff158a', '#66ccff', '#784bd1', '#0086c0'];
@@ -8,6 +8,7 @@ export const COLUMN_TYPES = {
   status: { label: 'Status', icon: CircleDot, color: '#00c875', width: 150 },
   people: { label: 'People', icon: Users, color: '#66ccff', width: 120 },
   date: { label: 'Date', icon: Calendar, color: '#a25ddc', width: 130 },
+  week: { label: 'Week', icon: CalendarDays, color: '#a25ddc', width: 120 },
   timeline: { label: 'Timeline', icon: GanttChart, color: '#784bd1', width: 180 },
   numbers: { label: 'Number', icon: Hash, color: '#fdab3d', width: 120 },
   dropdown: { label: 'Dropdown', icon: ListChecks, color: '#ff642e', width: 170 },
@@ -46,3 +47,8 @@ export const todayStr = () => { const d = new Date(); return new Date(d.getTime(
 export const initials = (n = '') => n.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase();
 export const timeAgo = (iso) => { const s = (Date.now() - new Date(iso)) / 1000; if (s < 60) return 'now'; if (s < 3600) return Math.floor(s / 60) + 'm'; if (s < 86400) return Math.floor(s / 3600) + 'h'; return Math.floor(s / 86400) + 'd'; };
 export const isDoneLabel = (l) => !!l && (l.color === '#00c875' || /done|ferdig|fixed|won|invoiced/i.test(l.label));
+
+// ISO week helpers – value format "2026-W44"
+export const isoWeek = (d = new Date()) => { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day); const y = t.getUTCFullYear(); const w = Math.ceil(((t - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7); return `${y}-W${String(w).padStart(2, '0')}`; };
+export const weekAdd = (v, n) => { const [y, w] = v.split('-W').map(Number); const jan4 = new Date(Date.UTC(y, 0, 4)); const mon = new Date(jan4.getTime() - ((jan4.getUTCDay() || 7) - 1) * 86400000 + (w - 1 + n) * 7 * 86400000); return isoWeek(new Date(mon.getUTCFullYear(), mon.getUTCMonth(), mon.getUTCDate())); };
+export const fmtWeek = (v) => { if (!v) return ''; const [y, w] = String(v).split('-W'); return y === String(new Date().getFullYear()) ? `Uke ${Number(w)}` : `Uke ${Number(w)} ’${String(y).slice(2)}`; };

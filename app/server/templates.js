@@ -39,3 +39,4 @@ const TEMPLATES = {
   },
 };
 module.exports = { TEMPLATES, col, grp, subCols, cid, C };
+Object.assign(TEMPLATES, require('./templates-kk'));

@@ -51,6 +51,7 @@ function fmtVal(col, v) {
     case 'dropdown': return (v || []).map((id) => (s.options || []).find((o) => o.id === id)?.label).filter(Boolean).join(', ') || '—';
     case 'people': return (v || []).map((id) => db.prepare('select name from people where id=?').get(id)?.name).filter(Boolean).join(', ') || '—';
     case 'timeline': return `${v.from || '?'} → ${v.to || '?'}`;
+    case 'week': return 'Uke ' + Number(String(v).split('-W')[1] || 0) + ' (' + String(v).split('-W')[0] + ')';
     case 'checkbox': return v ? '✔' : '✖';
     case 'link': return v.text || v.url || '—';
     case 'location': return (typeof v === 'object' ? v.address : v) || '—';
@@ -61,11 +62,26 @@ function fmtVal(col, v) {
 const BOARD_INS = 'insert into boards(id,workspace_id,name,description,icon,columns,sub_columns,groups_,views,favorite,pos,created,updated) values(?,?,?,?,?,?,?,?,?,?,?,?,?)';
 function createBoard({ workspace_id, name, template = 'blank', icon }) {
   const t = TEMPLATES[template] || TEMPLATES.blank;
+  // boards this template links to (e.g. Feilmeldinger → Alle Kunder): reuse one in the same workspace, else create it
+  const refs = {};
+  for (const ref of t.needs || []) {
+    const rt = TEMPLATES[ref];
+    const found = db.prepare('select id from boards where workspace_id=? and name=? order by pos limit 1').get(workspace_id, rt.name);
+    refs[ref] = found ? found.id : createBoard({ workspace_id, template: ref }).id;
+  }
   const m = t.make();
+  for (const c of m.columns) if (c.type === 'connect' && c.settings.boardRef) { c.settings.boardId = refs[c.settings.boardRef] || null; }
+  for (const c of m.columns) if (c.type === 'mirror' && c.settings.colTitle) {
+    const cc = m.columns.find((x) => x.id === c.settings.connectCol); const target = cc && cc.settings.boardId && getBoard(cc.settings.boardId);
+    c.settings.colId = target ? target.columns.find((x) => x.title === c.settings.colTitle)?.id || null : null;
+  }
   const id = cid('b');
   const pos = (db.prepare('select max(pos) m from boards where workspace_id=?').get(workspace_id).m || 0) + 1;
-  const views = [{ id: cid('v'), type: 'table', name: 'Main table' }, { id: cid('v'), type: 'kanban', name: 'Kanban' }];
-  db.prepare(BOARD_INS).run(id, workspace_id, name || t.name, '', icon || t.icon, JSON.stringify(m.columns), JSON.stringify(subCols()), JSON.stringify(m.groups), JSON.stringify(views), 0, pos, now(), now());
+  const views = [{ id: cid('v'), type: 'table', name: 'Main table' }];
+  if (!(m.views || []).some((v) => v.type === 'kanban')) views.push({ id: cid('v'), type: 'kanban', name: 'Kanban' });
+  (m.views || []).forEach((v) => views.push({ id: cid('v'), ...v }));
+  db.prepare(BOARD_INS).run(id, workspace_id, name || t.name, m.description || '', icon || t.icon, JSON.stringify(m.columns), JSON.stringify(m.sub_columns || subCols()), JSON.stringify(m.groups), JSON.stringify(views), 0, pos, now(), now());
+  if (m.automations || m.form) db.prepare('update boards set automations=?, form=? where id=?').run(JSON.stringify((m.automations || []).map((r) => ({ id: cid('a'), on: true, ...r }))), JSON.stringify(m.form || {}), id);
   m.items.forEach(([n, gi], k) => insertItem(id, m.groups[gi].id, n, null, {}, k + 1));
   return { id, columns: m.columns, groups: m.groups };
 }
@@ -155,7 +171,7 @@ app.post('/api/boards/:id/items', wrap((req, res) => {
   if (top) pos = (db.prepare('select min(pos) m from items where board_id=? and group_id=? and parent_id is null').get(b.id, gid).m || 1) - 1;
   const id = insertItem(b.id, gid, name || 'New item', parent_id, vals, pos);
   log(b.id, id, parent_id ? 'Created subitem' : 'Created item'); touch(b.id);
-  if (!parent_id) runAutomations(b.id, id, 'create', {});
+  runAutomations(b.id, id, parent_id ? 'subcreate' : 'create', {});
   return { ...fullBoard(b.id), newId: id };
 }));
 app.patch('/api/items/:id', wrap((req, res) => {
@@ -275,10 +291,12 @@ function runAutomations(board_id, item_id, trigger, changed, depth = 0) {
     const t = r.trigger || {};
     let hit = false;
     if (trigger === 'create' && t.type === 'item_created') hit = true;
+    if (trigger === 'subcreate' && t.type === 'subitem_created') hit = true;
+    if (trigger === 'subcreate' && t.type !== 'subitem_created') continue;
     if (trigger === 'change' && t.type === 'status_change' && t.col in changed && (!t.to || changed[t.col] === t.to)) hit = true;
     if (!hit) continue;
     const a = r.action || {};
-    const colT = (id) => b.columns.find((c) => c.id === id)?.title;
+    const colT = (id) => [...b.columns, ...(b.sub_columns || [])].find((c) => c.id === id)?.title;
     if (a.type === 'move_group' && a.group) { db.prepare('update items set group_id=? where id=? or parent_id=?').run(a.group, i.id, i.id); log(b.id, i.id, `⚡ Automation moved item to "${b.groups.find((g) => g.id === a.group)?.name}"`); }
     if (a.type === 'set_status' && a.col) { set[a.col] = a.to || null; log(b.id, i.id, `⚡ Automation set ${colT(a.col)}`); }
     if (a.type === 'set_date' && a.col) { set[a.col] = new Date().toISOString().slice(0, 10); log(b.id, i.id, `⚡ Automation set ${colT(a.col)} to today`); }
@@ -320,7 +338,10 @@ app.post('/api/forms/:id', wrap((req, res) => {
 app.get('/api/health', (req, res) => { try { db.prepare('select 1').get(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false }); } });
 
 // seed made-up demo data on an empty database (SEED_DEMO=0 to start empty)
-if (process.env.SEED_DEMO !== '0') db.transaction(() => require('./seed')(db, { createBoard, insertItem, getBoard, now, cid, ME: ME_SEED, AVATAR_COLORS }))();
+if (process.env.SEED_DEMO !== '0') {
+  db.transaction(() => require('./seed')(db, { createBoard, insertItem, getBoard, now, cid, ME: ME_SEED, AVATAR_COLORS }))();
+  db.transaction(() => require('./seed-kk')(db, { createBoard, insertItem, getBoard, now, cid, ME: ME_SEED }))(); // Kaffeknappen boards (once per database)
+}
 
 const dist = path.join(__dirname, '..', 'dist');
 app.use(express.static(dist, { setHeaders: (res, f) => { if (/(sw\.js|index\.html|\.webmanifest)$/.test(f)) res.setHeader('Cache-Control', 'no-cache'); else if (f.includes(path.sep + 'assets' + path.sep)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); } }));

@@ -11,8 +11,17 @@ export default function MobileList({ groups, top, A, ctx }) {
   const status = b.columns.filter((c) => c.type === 'status' || c.type === 'priority');
   const people = b.columns.filter((c) => c.type === 'people');
   const date = b.columns.find((c) => c.type === 'date') || b.columns.find((c) => c.type === 'timeline');
-  const loc = b.columns.find((c) => c.type === 'location');
-  const phone = b.columns.find((c) => c.type === 'phone');
+  // address / phone can come straight from the board or through a mirror of the linked customer (e.g. Kunde VIKTIG → Alle Kunder)
+  const viaMirror = (type) => {
+    for (const m of b.columns.filter((c) => c.type === 'mirror')) {
+      const cc = b.columns.find((c) => c.id === m.settings.connectCol); const other = cc && ctx.linked?.[cc.settings.boardId];
+      const src = other?.board.columns.find((c) => c.id === m.settings.colId);
+      if (src?.type === type) return (it) => { const li = other.items.find((i) => i.id === (it.vals[cc.id] || [])[0]); return li?.vals[src.id]; };
+    }
+    return null;
+  };
+  const own = (type) => { const c = b.columns.find((x) => x.type === type); return c ? (it) => it.vals[c.id] : viaMirror(type); };
+  const locOf = own('location'), phoneOf = own('phone');
   const [adding, setAdding] = useState({});
   return (
     <div className="m-list" data-testid="mobile-list">
@@ -29,7 +38,7 @@ export default function MobileList({ groups, top, A, ctx }) {
                 const ppl = [...new Set(people.flatMap((c) => it.vals[c.id] || []))];
                 const dv = date && it.vals[date.id]; const d = date?.type === 'timeline' ? dv?.from : dv;
                 const subs = (ctx.subsByParent[it.id] || []).length; const nUp = ctx.updateCounts[it.id] || 0;
-                const lv = loc && it.vals[loc.id];
+                const lv = locOf && locOf(it); const pv = phoneOf && phoneOf(it);
                 return (
                   <article key={it.id} className="m-card" data-testid="m-card">
                     <div className="m-top" onClick={() => A.openItem(it.id)} data-testid="m-open">
@@ -44,7 +53,7 @@ export default function MobileList({ groups, top, A, ctx }) {
                       {ppl.length > 0 && <span className="avatars">{ppl.slice(0, 3).map((id) => <Avatar key={id} person={ctx.people.find((p) => p.id === id)} size={26} ring />)}</span>}
                       {d && <span className={'date-text' + (d < todayStr() && !ctx.doneOf(it) ? ' late' : '')}>📅 {fmtDate(d)}</span>}
                       <span className="grow" />
-                      {phone && it.vals[phone.id] && <a className="m-act" href={'tel:' + it.vals[phone.id]} title="Call"><Phone size={16} /></a>}
+                      {pv && <a className="m-act" href={'tel:' + String(pv).replace(/\s/g, '')} title="Call" data-testid="m-call"><Phone size={16} /></a>}
                       {locText(lv) && <a className="m-act blue" href={dirUrl(lv)} target="_blank" rel="noreferrer" title="Directions" data-testid="m-directions"><Navigation size={16} /></a>}
                     </div>
                     {locText(lv) && <div className="m-loc small muted">📍 {locText(lv)}</div>}

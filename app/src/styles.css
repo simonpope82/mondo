@@ -506,3 +506,10 @@ a { color: var(--primary); text-decoration: none; }
 .touch-ghost { position: fixed; z-index: 2000; pointer-events: none; transform: rotate(3deg) scale(1.03); box-shadow: 0 12px 30px rgba(0,0,0,.3); }
 .card { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .offline-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 3000; background: #333; color: #fff; text-align: center; padding: calc(6px + env(safe-area-inset-top)) 10px 6px; font-weight: 600; font-size: 14px; }
+/* week column + subitem mirror */
+.week-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 6px 0; }
+.week-btn { border: 1px solid #d0d4e4; background: #fff; border-radius: 6px; padding: 6px 0; font-size: 13px; cursor: pointer; }
+.week-btn.now { border-color: #0073ea; font-weight: 700; }
+.week-btn.on { background: #0073ea; color: #fff; border-color: #0073ea; }
+.date-text.week-now { color: #0073ea; font-weight: 600; }
+.battery span { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; white-space: nowrap; overflow: hidden; }

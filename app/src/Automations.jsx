@@ -17,7 +17,7 @@ function Rule({ r, board, ctx, onChange, onDelete }) {
       <label className="switch"><input type="checkbox" checked={r.on !== false} onChange={(e) => onChange({ ...r, on: e.target.checked })} /><span /></label>
       <div className="auto-sentence">
         <b>When</b>
-        <Sel value={t.type} onChange={(v) => setT({ type: v })}><option value="status_change">status changes</option><option value="item_created">an item is created</option></Sel>
+        <Sel value={t.type} onChange={(v) => setT({ type: v })}><option value="status_change">status changes</option><option value="item_created">an item is created</option><option value="subitem_created">a subitem is created</option></Sel>
         {t.type === 'status_change' && <>
           <Sel value={t.col} onChange={(v) => setT({ col: v, to: '' })}><option value="">pick column</option>{sc.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</Sel>
           <b>to</b>
@@ -32,7 +32,7 @@ function Rule({ r, board, ctx, onChange, onDelete }) {
           <Sel value={a.col} onChange={(v) => setA({ col: v, to: '' })}><option value="">pick column</option>{sc.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</Sel>
           <b>to</b><Sel value={a.to} onChange={(v) => setA({ to: v })}><option value="">blank</option>{labelsOf(a.col).map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</Sel>
         </>}
-        {a.type === 'set_date' && <Sel value={a.col} onChange={(v) => setA({ col: v })}><option value="">pick date column</option>{board.columns.filter((c) => c.type === 'date').map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</Sel>}
+        {a.type === 'set_date' && <Sel value={a.col} onChange={(v) => setA({ col: v })}><option value="">pick date column</option>{(t.type === 'subitem_created' ? board.sub_columns || [] : board.columns).filter((c) => c.type === 'date').map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</Sel>}
         {a.type === 'notify' && <>
           <Sel value={a.person} onChange={(v) => setA({ person: v })}><option value="">pick person</option><option value="__owner">the item's people</option>{ctx.people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</Sel>
           <input className="auto-sel" placeholder="message" value={a.text || ''} onChange={(e) => setA({ text: e.target.value })} />
