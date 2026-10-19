@@ -21,7 +21,7 @@ create table if not exists notifications(id integer primary key autoincrement, p
 `);
 
 const addCol = (t, c, def) => { const cols = db.prepare(`pragma table_info(${t})`).all().map((r) => r.name); if (!cols.includes(c)) db.exec(`alter table ${t} add column ${c} ${def}`); };
-addCol('boards', 'automations', "text default '[]'"); addCol('boards', 'form', "text default '{}'"); addCol('updates', 'parent_id', 'text');
+addCol('boards', 'automations', "text default '[]'"); addCol('boards', 'form', "text default '{}'"); addCol('updates', 'parent_id', 'text'); addCol('notifications', 'url', 'text');
 const now = () => new Date().toISOString();
 const J = (s, d) => { try { return s ? JSON.parse(s) : d; } catch { return d; } };
 const AVATAR_COLORS = ['#579bfc', '#a25ddc', '#00c875', '#fdab3d', '#e2445c', '#ff642e', '#037f4c', '#ff158a', '#784bd1', '#0086c0'];
@@ -278,9 +278,9 @@ app.get('/api/overview', wrap(() => {
 }));
 
 // automations (run on server so forms + all edits trigger them)
-function notify(person, text, board_id, item_id) {
-  db.prepare('insert into notifications(person,text,board_id,item_id,created) values(?,?,?,?,?)').run(person, text, board_id, item_id, now());
-  PUSH.send(person, { title: 'mondo', body: text, url: '/#/board/' + board_id, tag: item_id }).catch(() => {});
+function notify(person, text, board_id, item_id, url) {
+  db.prepare('insert into notifications(person,text,board_id,item_id,created,url) values(?,?,?,?,?,?)').run(person, text, board_id, item_id, now(), url || null);
+  PUSH.send(person, { title: 'mondo', body: text, url: url || '/#/board/' + board_id, tag: item_id || url }).catch(() => {});
 }
 function runAutomations(board_id, item_id, trigger, changed, depth = 0) {
   if (depth > 3) return;
@@ -339,6 +339,10 @@ app.post('/api/forms/:id', wrap((req, res) => {
   return { ok: true };
 }));
 
+// Assets module (GoCodes-style QR asset tracking)
+const ASSETS = require('./assets').setup(db, { me, meName, now, notify, insertItem, getBoard, DATA_DIR, auth });
+ASSETS.routes(app, wrap);
+
 app.get('/api/health', (req, res) => { try { db.prepare('select 1').get(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false }); } });
 
 // seed made-up demo data on an empty database (SEED_DEMO=0 to start empty)
@@ -346,6 +350,7 @@ if (process.env.SEED_DEMO !== '0') {
   db.transaction(() => require('./seed')(db, { createBoard, insertItem, getBoard, now, cid, ME: ME_SEED, AVATAR_COLORS }))();
   db.transaction(() => require('./seed-kk')(db, { createBoard, insertItem, getBoard, now, cid, ME: ME_SEED }))(); // Kaffeknappen boards (once per database)
   db.transaction(() => require('./seed-more')(db, { createBoard, insertItem, getBoard, now, cid }))(); // Ledelse / admin boards (once per database)
+  db.transaction(() => require('./seed-assets')(db, ASSETS, { now, insertItem }))(); // demo assets + QR codes (once per database)
 }
 
 const dist = path.join(__dirname, '..', 'dist');
@@ -378,4 +383,5 @@ function checkDateRules() {
   } catch (e) { console.warn('date rules failed', e.message); }
 }
 checkDateRules(); setInterval(checkDateRules, 15 * 60 * 1000).unref();
+setTimeout(() => ASSETS.checkAlerts(), 5000).unref(); setInterval(() => ASSETS.checkAlerts(), 60 * 60 * 1000).unref();
 app.listen(PORT, process.env.HOST || (process.env.RENDER ? '0.0.0.0' : '127.0.0.1'), () => console.log(`mondo running on http://localhost:${PORT}`));

@@ -69,10 +69,10 @@ export function UsersPage({ ctx, me }) {
           <div key={u.id} className="user-row" data-testid="user-row">
             <Avatar person={P(u)} size={36} />
             <div className="grow"><b>{u.name}</b><div className="muted small">{u.email}</div></div>
-            <span className={'role ' + u.role}>{u.role === 'admin' ? <><Shield size={13} /> Admin</> : <><User size={13} /> Member</>}</span>
+            <span className={'role ' + u.role}>{u.role === 'admin' ? <><Shield size={13} /> Group administrator</> : <><User size={13} /> Asset manager</>}</span>
             <span className="muted small">{u.last_login ? 'Last in: ' + new Date(u.last_login).toLocaleDateString('en-GB') : 'Never logged in'}</span>
             {u.id !== me.id && <>
-              <button className="btn small" onClick={async () => { await api.patch('/users/' + u.id, { role: u.role === 'admin' ? 'member' : 'admin' }); load(); }}>{u.role === 'admin' ? 'Make member' : 'Make admin'}</button>
+              <button className="btn small" onClick={async () => { await api.patch('/users/' + u.id, { role: u.role === 'admin' ? 'member' : 'admin' }); load(); }}>{u.role === 'admin' ? 'Make asset manager' : 'Make group admin'}</button>
               <button className="btn small" onClick={() => reset(u)}><KeyRound size={13} /> New password</button>
               <button className="icon-btn" onClick={async () => { if (await dialog.confirm(`Remove ${u.name}?`)) { await api.del('/users/' + u.id); load(); } }}><Trash2 size={16} /></button>
             </>}
@@ -100,7 +100,7 @@ function AddUser({ onClose, onDone }) {
       <label className="mini-label">Email</label><input className="text-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} data-testid="user-email" />
       <label className="mini-label">Password</label><input className="text-input" value={pw} onChange={(e) => setPw(e.target.value)} />
       <label className="mini-label">Role</label>
-      <div className="row-gap"><button className={'btn' + (role === 'member' ? ' primary' : '')} onClick={() => setRole('member')}><User size={15} /> Member</button><button className={'btn' + (role === 'admin' ? ' primary' : '')} onClick={() => setRole('admin')}><Shield size={15} /> Admin</button></div>
+      <div className="row-gap"><button className={'btn' + (role === 'member' ? ' primary' : '')} onClick={() => setRole('member')}><User size={15} /> Asset manager</button><button className={'btn' + (role === 'admin' ? ' primary' : '')} onClick={() => setRole('admin')}><Shield size={15} /> Group administrator</button></div>
       {err && <div className="login-err">⚠️ {err}</div>}
       <div className="modal-actions"><button className="btn ghost" onClick={onClose}>Cancel</button>
         <button className="btn primary" disabled={!name || !email || pw.length < 8} data-testid="user-save" onClick={async () => { try { await api.post('/users', { name, email, password: pw, role }); onDone({ email, password: pw }); } catch (e) { setErr(e.message); } }}>Add user</button></div>

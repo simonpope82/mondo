@@ -1,5 +1,5 @@
 // mondo service worker: app shell cache + offline read cache for GET /api + web push
-const SHELL = 'mondo-shell-v2';
+const SHELL = 'mondo-shell-v3';
 const DATA = 'mondo-data-v1';
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(SHELL).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon-192.png']))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => ![SHELL, DATA].includes(k)).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
@@ -7,7 +7,7 @@ self.addEventListener('fetch', (e) => {
   const req = e.request; const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin) return;
   if (url.pathname.startsWith('/api/')) {
-    if ((url.pathname.startsWith('/api/auth') && url.pathname !== '/api/auth/me') || url.pathname.startsWith('/api/geocode') || url.pathname.startsWith('/api/push')) return;
+    if ((url.pathname.startsWith('/api/auth') && url.pathname !== '/api/auth/me') || url.pathname.startsWith('/api/geocode') || url.pathname.startsWith('/api/push') || url.pathname.startsWith('/api/labels') || url.pathname.startsWith('/api/assets-report')) return;
     // network first, fall back to the last copy (read-only offline)
     e.respondWith(fetch(req).then((r) => { if (r.ok) { const cp = r.clone(); caches.open(DATA).then((c) => c.put(req, cp)); } return r; })
       .catch(() => caches.match(req).then((m) => m ? new Response(m.body, { status: 200, headers: { 'Content-Type': 'application/json', 'X-Mondo-Offline': '1' } }) : new Response(JSON.stringify({ error: 'offline' }), { status: 503, headers: { 'Content-Type': 'application/json' } }))));

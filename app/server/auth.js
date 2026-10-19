@@ -65,7 +65,7 @@ function setup(db) {
     return { id, email, name, role, person_id };
   }
 
-  const PUBLIC = (req) => req.path === '/api/auth/login' || req.path === '/api/health' || req.path === '/api/push/key' || req.path.startsWith('/api/forms/');
+  const PUBLIC = (req) => req.path === '/api/auth/login' || req.path === '/api/health' || req.path === '/api/push/key' || req.path.startsWith('/api/forms/') || req.path.startsWith('/api/scan/');
   function middleware(req, res, next) {
     if (!req.path.startsWith('/api')) return next();
     // CSRF guard: state-changing API calls must be JSON (cross-site forms can't send that without CORS)

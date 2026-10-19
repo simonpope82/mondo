@@ -16,7 +16,7 @@ export function Notifications() {
       <div className="mini-label">🔔 Notifications</div>
       <PushToggle />
       {!list.length && <div className="muted pad">Nothing new 🎉</div>}
-      <div className="notif-list">{list.map((n) => <a key={n.id} className={'notif' + (n.read ? '' : ' unread')} href={'#/board/' + n.board_id} onClick={() => setOpen(false)}><span>{n.text}</span><span className="muted small">{timeAgo(n.created)}</span></a>)}</div>
+      <div className="notif-list">{list.map((n) => <a key={n.id} className={'notif' + (n.read ? '' : ' unread')} href={n.url || '#/board/' + n.board_id} onClick={() => setOpen(false)}><span>{n.text}</span><span className="muted small">{timeAgo(n.created)}</span></a>)}</div>
     </Popover>}
   </>;
 }

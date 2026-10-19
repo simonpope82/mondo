@@ -193,6 +193,7 @@ function TextCell({ value, onChange, type, align }) {
     if (type === 'phone') return <a href={'tel:' + value} onClick={(e) => e.stopPropagation()}>📞 {value}</a>;
     if (type === 'location') return <span className="loc"><a href={'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(value)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="Show on map">📍 {value}</a><a className="dir" href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(value)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="Directions" data-testid="directions">🧭</a></span>;
     if (type === 'email') return <a href={'mailto:' + value} onClick={(e) => e.stopPropagation()}>✉️ {value}</a>;
+    if (/^[A-Z0-9]{4}-[A-Z0-9]{4}$/i.test(String(value).trim())) return <a className="asset-link" href={'#/assets/code/' + String(value).trim().toUpperCase()} onClick={(e) => e.stopPropagation()} title="Open asset" data-testid="asset-link">🏷️ {value}</a>;
     return value;
   }
 }

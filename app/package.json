@@ -1,7 +1,7 @@
 {
   "name": "mondo",
   "version": "1.0.0",
-  "description": "mondo \u2013 a monday.com-style work app (boards, map, phone app)",
+  "description": "mondo – a monday.com-style work app (boards, map, phone app)",
   "main": "server/index.js",
   "scripts": {
     "build": "vite build",
@@ -17,6 +17,7 @@
   "type": "commonjs",
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
+    "jsqr": "1.4",
     "lucide-react": "^1.59.0",
     "playwright": "^1.64.1",
     "react": "^18.3.1",
@@ -28,6 +29,8 @@
     "better-sqlite3": "^11.10.0",
     "express": "^5.3.0",
     "leaflet": "^1.9.4",
+    "pdfkit": "^0.15.2",
+    "qrcode": "1.5",
     "web-push": "^3.6.7"
   },
   "engines": {

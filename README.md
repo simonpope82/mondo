@@ -25,6 +25,17 @@ Also created on a fresh database, and available as templates. The structure is c
 - New automation triggers: **a column changes** and **a date arrives** (checked every 15 minutes, and straight away when the date is set to today).
 - `tests/more.mjs` checks the structure and takes screenshots 30–39.
 
+## 🏷️ Assets (GoCodes-style QR asset tracking)
+Menu → **Assets** (or the 📷 **Scan** button). Everything here is made-up demo data.
+- **Asset list**: GoCodes built-in fields (you can switch each one on/off and rename it), plus Simon's custom fields (Co2, Adresse, Etg, Plassering, Aquastop levert av KK, Grutgjennomføring, Fresk melk, Avdeling, Filter, Kontakt person og Nr). Also: search, a column picker, filters per column, group by type, double-click a cell to edit, 50 per page, CSV export, print labels for the selected rows. On a phone you get cards instead.
+- **Asset page**: photo (phone camera), "Location updated X ago" with a map and the scan trail, a check in/out badge with Check out / Transfer / Check in (to a person, location or job site, with return date and note; GPS is stamped on it), financial info (current value, end of life), tabs for Check In/Out, Tasks, Documents, Messages, Jobs (board items that mention the code, e.g. the *Gocodes* column on Feilmeldinger; or press "New job"), and History. Menu: Copy to another tag, Print label, Deactivate.
+- **QR tags**: codes look like `ABCD-EFGH` (no 0/O/1/I). Each sticker's URL is `PUBLIC_URL/s/ABCD-EFGH`. **Labels** tab: generate unused tags and download a PDF for Avery 6570/6576 (the GoCodes size), 5160, 22806, L7651, L7160, L7163, or 50×25 / 62×29 roll labels. You can skip used labels on a sheet and draw outlines for a test print.
+- **Scanning**: the normal phone camera opens `/s/<code>`. If you're logged in, a GPS scan is saved (lat/lng/accuracy/user/time) and the asset opens. An unused tag opens **Activate asset tag** (new or existing asset). If you're not logged in, you see the public fields, the reward and a "message the owner" form, and admins get a 🔔 alert. The in-app scanner (BarcodeDetector, or jsQR on iPhone) also reads **old GoCodes stickers** (`gkd.bz/<ID>`) through the "Old GoCodes ID" field. If the camera fails, you can type the code.
+- **Map** (all last-known positions, satellite toggle, history trail), **Agenda** (service scheduled, end of life, due back, tasks), **Tasks**, **Messages**, **Reports** (CSV: all asset data, assignment, change history, depreciation SL half-year / SL monthly / DB150 / DB200), **Settings** (fields, public fields, alerts: overdue, scheduled service and low inventory go to 🔔 + phone push).
+- Roles: admin = *Group administrator* (settings, deactivate), member = *Asset manager*.
+- ⚠️ **Before printing real stickers**: point a domain you own at the service (e.g. `assets.kaffeknappen.no`) and set `PUBLIC_URL`. Printed QR codes contain that URL for good. Also use the paid plan with a disk: the free plan wipes generated codes, scans and photos on restart. The demo tags are deterministic, so they survive resets.
+- Tests: `node tests/assets.mjs` (desktop + phone, including a fake-camera scan of an old GoCodes sticker).
+
 ## Run it locally
 ```bash
 cd app
@@ -37,6 +48,7 @@ ADMIN_EMAIL=you@example.org ADMIN_PASSWORD='Some-Long-Pass-12' npm start   # htt
 - Tests (with the server running): `E2E_EMAIL=… E2E_PASSWORD=… node tests/e2e.mjs http://localhost:4321` (desktop, 25 steps) and `node tests/phone.mjs http://localhost:4321` (390×844 iPhone and Android, 14 steps). Screenshots are saved to `screenshots/`.
 
 ## Environment variables
+- `PUBLIC_URL` – base URL printed in QR stickers (default: the URL the request came in on)
 | Variable | Default | Meaning |
 |---|---|---|
 | `PORT` | 4321 | HTTP port (Render sets this itself) |

@@ -7,6 +7,11 @@ import { PublicForm } from './Forms.jsx';
 import { Login, UsersPage, PasswordModal } from './Auth.jsx';
 import { InstallBanner, OfflineBar, clearOfflineData, useInstall } from './pwa.jsx';
 import { Notifications } from './Home.jsx';
+import AssetsModule from './assets/Assets.jsx';
+import { PublicScan } from './assets/Scan.jsx';
+import { Tag, Camera } from 'lucide-react';
+// sticker URLs look like https://<host>/s/ABCD-EFGH → hand over to the hash router
+if (window.location.pathname.startsWith('/s/')) history.replaceState(null, '', '/#/scan/' + encodeURIComponent(decodeURIComponent(window.location.pathname.slice(3))));
 import { LogOut, KeyRound, UsersRound, House, Plus, Search, ChevronDown, Star, MoreHorizontal, Pencil, Copy, Trash2, Briefcase, Check, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 function useHash() {
@@ -36,6 +41,7 @@ export default function App() {
   useEffect(() => { if (wsId) localStorage.setItem('ws', wsId); }, [wsId]);
   if (hash.startsWith('#/form/')) return <PublicForm boardId={hash.split('/')[2]} />;
   if (user === undefined) return <div className="loading">Loading…</div>;
+  if (!user && hash.startsWith('#/scan/')) return <PublicScan code={hash.split('/')[2]} />;
   if (!user) return <Login onLogin={(u) => setUser(u)} />;
   if (!boot) return <div className="loading">Loading…</div>;
   const logout = async () => { await api.post('/auth/logout').catch(() => {}); clearOfflineData(); setUser(null); setBoot(null); };
@@ -50,7 +56,7 @@ export default function App() {
       <div className="app-body">
         <Sidebar boot={boot} ws={ws} setWsId={setWsId} reload={reload} boardId={boardId} hash={hash} onNewBoard={() => setNewBoard(true)} collapsed={collapsed} setCollapsed={setCollapsed} />
         <main className="main">
-          {boardId ? <Board key={boardId} boardId={boardId} ctx={ctx} /> : hash.startsWith('#/users') && user.role === 'admin' ? <UsersPage ctx={ctx} me={user} /> : <Home ctx={ctx} user={user} onNewBoard={() => setNewBoard(true)} />}
+          {hash.startsWith('#/assets') || hash.startsWith('#/scan') ? <AssetsModule hash={hash} ctx={ctx} user={user} /> : boardId ? <Board key={boardId} boardId={boardId} ctx={ctx} /> : hash.startsWith('#/users') && user.role === 'admin' ? <UsersPage ctx={ctx} me={user} /> : <Home ctx={ctx} user={user} onNewBoard={() => setNewBoard(true)} />}
         </main>
       </div>
       {newBoard && <NewBoardModal boot={boot} ws={ws} onClose={() => setNewBoard(false)} onCreated={async (id) => { setNewBoard(false); await reload(); go('#/board/' + id); }} />}
@@ -69,10 +75,11 @@ function TopBar({ user, onLogout, onPassword }) {
   return (
     <header className="topbar">
       <a className="brand" href="#/home"><span className="logo"><i style={{ background: '#e2445c' }} /><i style={{ background: '#fdab3d' }} /><i style={{ background: '#00c875' }} /></span><b>mondo</b><span className="brand-sub">work management</span></a>
-      <div className="topbar-right"><Notifications /><button className="avatar-btn" onClick={(e) => setMenu(e.currentTarget)} data-testid="user-menu" title={user?.name}><span className="avatar" style={{ background: '#579bfc', width: 32, height: 32, fontSize: 13 }}>{ini}</span></button>
+      <div className="topbar-right"><button className="icon-btn top-scan" onClick={() => go('#/scan')} title="Scan QR tag" data-testid="top-scan"><Camera size={20} /><span>Scan</span></button><Notifications /><button className="avatar-btn" onClick={(e) => setMenu(e.currentTarget)} data-testid="user-menu" title={user?.name}><span className="avatar" style={{ background: '#579bfc', width: 32, height: 32, fontSize: 13 }}>{ini}</span></button>
         {menu && <Menu anchor={menu} onClose={() => setMenu(null)} width={230} items={[
           { label: `${user.name} (${user.email})`, icon: UsersRound, onClick: () => {} }, '-',
           user.role === 'admin' && { label: 'Users', icon: UsersRound, onClick: () => go('#/users') },
+          { label: 'Activate asset tag', icon: Tag, onClick: () => go('#/scan') },
           { label: 'Change password', icon: KeyRound, onClick: onPassword },
           inst.canPrompt && { label: 'Install app 📲', icon: KeyRound, onClick: inst.install },
           { label: 'Log out', icon: LogOut, danger: true, onClick: onLogout },
@@ -102,6 +109,7 @@ function Sidebar({ boot, ws, setWsId, reload, boardId, hash, onNewBoard, collaps
         <a className={'side-link' + (hash.startsWith('#/home') ? ' active' : '')} href="#/home"><House size={18} /> Home</a>
         <button className="icon-btn" onClick={() => setCollapsed(true)} title="Hide menu"><ChevronsLeft size={18} /></button>
       </div>
+      <a className={'side-link' + (hash.startsWith('#/assets') || hash.startsWith('#/scan') ? ' active' : '')} href="#/assets" data-testid="side-assets"><Tag size={18} /> Assets</a>
       {boot.user?.role === 'admin' && <a className={'side-link' + (hash.startsWith('#/users') ? ' active' : '')} href="#/users" data-testid="side-users"><UsersRound size={18} /> Users</a>}
       {favs.length > 0 && <div className="side-section"><div className="side-title"><Star size={14} fill="#ffcb00" color="#ffcb00" /> Favourites</div>{favs.map((b) => <BoardLink key={b.id} b={b} />)}</div>}
       <div className="side-section">
