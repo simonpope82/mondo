@@ -55,7 +55,7 @@ await step('check out to person (with GPS) → check in', async () => {
   await p.waitForSelector(T('asd-checkin')); expect((await p.textContent(T('asd-assigned'))).includes('Maria'), 'assigned');
   expect((await p.textContent(T('asd-banner'))).includes('±'), 'gps on checkout');
   await p.click(T('asd-checkin')); await p.click(T('co-save')); await p.waitForSelector(T('asd-checkout'));
-  await p.click(T('asd-tab-checks')); const t = await p.textContent(T('ev-list')); expect(t.includes('Checked in from Maria') && t.includes('Checked out to Maria'), 'history');
+  await p.click(T('asd-tab-checks')); await p.waitForFunction(() => (document.querySelector('[data-testid="ev-list"]')?.textContent || '').includes('Checked in from Maria'), null, { timeout: 10000 }).catch(() => {}); const t = await p.textContent(T('ev-list')); expect(t.includes('Checked in from Maria') && t.includes('Checked out to Maria'), 'history');
 });
 await step('task + document link', async () => {
   await p.click(T('asd-tab-tasks')); await p.fill(T('asd-task-title'), 'Test task'); await p.click(T('asd-task-add')); await p.waitForTimeout(400);
