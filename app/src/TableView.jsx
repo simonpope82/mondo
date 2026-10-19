@@ -99,6 +99,7 @@ export function Summary({ col, items, ctx }) {
     const blank = n - counts.reduce((a, c) => a + c.n, 0);
     return <div className="battery">{counts.filter((c) => c.n).map((c) => <span key={c.l.id} style={{ width: (c.n / n) * 100 + '%', background: c.l.color }} title={`${c.l.label}: ${c.n}`} />)}{blank > 0 && <span style={{ width: (blank / n) * 100 + '%', background: '#c4c4c4' }} title={`Blank: ${blank}`} />}</div>;
   }
+  if (col.type === 'numbers' && col.settings.hideFooter) return null;
   if (col.type === 'numbers') { const s = items.reduce((a, i) => a + (Number(i.vals[col.id]) || 0), 0); return <div className="sum-num" data-testid="sum"><b>{fmtNum(s)}{col.settings.unit ? ' ' + col.settings.unit : ''}</b><span>sum</span></div>; }
   if (col.type === 'checkbox') { const s = items.filter((i) => i.vals[col.id]).length; return <div className="sum-num"><b>{s}/{items.length}</b><span>✔</span></div>; }
   if (col.type === 'time_tracking') { const s = items.reduce((a, i) => a + (i.vals[col.id]?.total || 0), 0); return <div className="sum-num"><b>{Math.floor(s / 3600)}h {Math.floor((s % 3600) / 60)}m</b><span>sum</span></div>; }

@@ -12,6 +12,19 @@ On a fresh database mondo creates the workspace **Kaffeknappen** with the three 
 - On phones, Feilmeldinger cards get 📞 and ➤ buttons from the linked customer's phone number and address.
 - `tests/kk.mjs` checks the structure and takes screenshots 24–29.
 
+## Ledelse, Employee and car boards
+Also created on a fresh database, and available as templates. The structure is copied from monday; the rows are **made up**.
+- **Ledelse:**
+  - 🏛️ **Styrets handlingsplan Kaffeknappen 2025**: Status, Kategori, Prioritet, People, Tidsfrist, Tiltak 2021. Done → moved to Done.
+  - 🤝 **4-banden ledelsesmøte**: Person, Status, Date, Files. Done → moved to group 2.
+  - 🎯 **Strategi 2030**: Avdeling, Person, Status, Label (year). Delmål are subitems with Owner, Status, Timeline and Progress.
+  - 🗺️ **Handlingsplan 2026 Service**: one goal per group. The group names are placeholders.
+- **Kaffeknappen:** 👥 **Employee Kaffeknappen** and 🚐 **KK biler** (subitems; when EU-kontroll / Dekkskift / Service Dato arrives the driver gets a notification; changing KM STAND sets SIST LEST KM to today).
+- **Magnat:** 👥 **Employee Magnat** and 🚐 **MK biler**.
+- ⚠️ The employee boards have the same columns as monday, including salary, person nr and bank nr. The demo rows leave those columns **empty**. Never enter real HR data on the public test site.
+- New automation triggers: **a column changes** and **a date arrives** (checked every 15 minutes, and straight away when the date is set to today).
+- `tests/more.mjs` checks the structure and takes screenshots 30–39.
+
 ## Run it locally
 ```bash
 cd app

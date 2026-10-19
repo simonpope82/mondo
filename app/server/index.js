@@ -189,6 +189,7 @@ app.patch('/api/items/:id', wrap((req, res) => {
   db.prepare('update items set name=?, vals=?, group_id=?, updated=? where id=?').run(req.body.name ?? i.name, JSON.stringify(vals), req.body.group_id ?? i.group_id, now(), i.id);
   if (req.body.group_id && req.body.group_id !== i.group_id) db.prepare('update items set group_id=? where parent_id=?').run(req.body.group_id, i.id);
   if (req.body.vals && !i.parent_id) runAutomations(b.id, i.id, 'change', req.body.vals, vals);
+  if (req.body.vals && (b.automations || []).some((r) => r.trigger?.type === 'date_arrives' && r.trigger.col in req.body.vals)) checkDateRules(); // a date set to today fires right away
   touch(b.id);
   return fullBoard(b.id);
 }));
@@ -294,6 +295,9 @@ function runAutomations(board_id, item_id, trigger, changed, depth = 0) {
     if (trigger === 'subcreate' && t.type === 'subitem_created') hit = true;
     if (trigger === 'subcreate' && t.type !== 'subitem_created') continue;
     if (trigger === 'change' && t.type === 'status_change' && t.col in changed && (!t.to || changed[t.col] === t.to)) hit = true;
+    if (trigger === 'change' && t.type === 'column_change' && t.col in changed) hit = true;
+    if (trigger === 'date' && r.id === changed.__rule) hit = true;
+    if (trigger === 'date' && r.id !== changed.__rule) continue;
     if (!hit) continue;
     const a = r.action || {};
     const colT = (id) => [...b.columns, ...(b.sub_columns || [])].find((c) => c.id === id)?.title;
@@ -341,6 +345,7 @@ app.get('/api/health', (req, res) => { try { db.prepare('select 1').get(); res.j
 if (process.env.SEED_DEMO !== '0') {
   db.transaction(() => require('./seed')(db, { createBoard, insertItem, getBoard, now, cid, ME: ME_SEED, AVATAR_COLORS }))();
   db.transaction(() => require('./seed-kk')(db, { createBoard, insertItem, getBoard, now, cid, ME: ME_SEED }))(); // Kaffeknappen boards (once per database)
+  db.transaction(() => require('./seed-more')(db, { createBoard, insertItem, getBoard, now, cid }))(); // Ledelse / admin boards (once per database)
 }
 
 const dist = path.join(__dirname, '..', 'dist');
@@ -353,4 +358,24 @@ if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD && !db.prepare('select
   console.log('Admin user created for', process.env.ADMIN_EMAIL);
 }
 const PORT = process.env.PORT || 4321;
+// "When a date arrives" automations: checked at start and every 15 minutes (each rule fires once per item and date)
+function checkDateRules() {
+  try {
+    db.exec('create table if not exists meta(key text primary key, value text)');
+    for (const row of db.prepare('select id, automations from boards').all()) {
+      const rules = J(row.automations, []).filter((r) => r.on !== false && r.trigger?.type === 'date_arrives' && r.trigger.col);
+      for (const r of rules) {
+        const d = new Date(); d.setDate(d.getDate() + (Number(r.trigger.offset) || 0)); const target = d.toISOString().slice(0, 10);
+        for (const it of db.prepare('select id, vals from items where board_id=?').all(row.id)) {
+          if (J(it.vals, {})[r.trigger.col] !== target) continue;
+          const key = `date_rule:${r.id}:${it.id}:${target}`;
+          if (db.prepare('select 1 from meta where key=?').get(key)) continue;
+          db.prepare('insert into meta values(?,?)').run(key, now());
+          runAutomations(row.id, it.id, 'date', { __rule: r.id });
+        }
+      }
+    }
+  } catch (e) { console.warn('date rules failed', e.message); }
+}
+checkDateRules(); setInterval(checkDateRules, 15 * 60 * 1000).unref();
 app.listen(PORT, process.env.HOST || (process.env.RENDER ? '0.0.0.0' : '127.0.0.1'), () => console.log(`mondo running on http://localhost:${PORT}`));

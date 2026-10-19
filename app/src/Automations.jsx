@@ -17,11 +17,16 @@ function Rule({ r, board, ctx, onChange, onDelete }) {
       <label className="switch"><input type="checkbox" checked={r.on !== false} onChange={(e) => onChange({ ...r, on: e.target.checked })} /><span /></label>
       <div className="auto-sentence">
         <b>When</b>
-        <Sel value={t.type} onChange={(v) => setT({ type: v })}><option value="status_change">status changes</option><option value="item_created">an item is created</option><option value="subitem_created">a subitem is created</option></Sel>
+        <Sel value={t.type} onChange={(v) => setT({ type: v })}><option value="status_change">status changes</option><option value="item_created">an item is created</option><option value="subitem_created">a subitem is created</option><option value="column_change">a column changes</option><option value="date_arrives">a date arrives</option></Sel>
         {t.type === 'status_change' && <>
           <Sel value={t.col} onChange={(v) => setT({ col: v, to: '' })}><option value="">pick column</option>{sc.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</Sel>
           <b>to</b>
           <Sel value={t.to} onChange={(v) => setT({ to: v })}><option value="">anything</option>{labelsOf(t.col).map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}</Sel>
+        </>}
+        {t.type === 'column_change' && <Sel value={t.col} onChange={(v) => setT({ col: v })}><option value="">pick column</option>{board.columns.filter((c) => !['mirror', 'creation_log', 'last_updated'].includes(c.type)).map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</Sel>}
+        {t.type === 'date_arrives' && <>
+          <Sel value={t.col} onChange={(v) => setT({ col: v })}><option value="">pick date column</option>{board.columns.filter((c) => c.type === 'date').map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</Sel>
+          <Sel value={String(t.offset || 0)} onChange={(v) => setT({ offset: Number(v) })}>{[0, 1, 3, 7, 14, 30].map((n) => <option key={n} value={n}>{n ? `${n} days before` : 'on the day'}</option>)}</Sel>
         </>}
         <b>then</b>
         <Sel value={a.type} onChange={(v) => setA({ type: v })}>
