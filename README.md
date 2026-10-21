@@ -81,3 +81,27 @@ Add a **Location** column, type an address (search uses OpenStreetMap Nominatim,
 - `app/server/`: `index.js` (API, automations, forms, notifications), `auth.js` (login, sessions, users), `push.js` (web push), `geo.js` (address search), `templates.js`, `seed.js` (demo data).
 - `app/src/`: `App.jsx`, `Board.jsx`, `TableView.jsx`, `MobileList.jsx`, `Cells.jsx`, `Location.jsx`, `MapView.jsx`, `Views.jsx`, `ItemPanel.jsx`, `Automations.jsx`, `Forms.jsx`, `Home.jsx`, `Auth.jsx`, `pwa.jsx`.
 - `app/public/`: manifest, icons, service worker (`sw.js`).
+
+## 🛞 Dekkhotell (tyre change booking + tyre hotel + CRM)
+Workspace **Dekkhotell** with editable template boards (also available under *New board → Dekk: …*):
+**Kunder** (CRM) · **Kjøretøy** · **Bookinger** (calendar, status Bestilt/Bekreftet/Møtt/Ferdig/Ikke møtt, lift, price, payment) · **Dekkhotell lager** (location, 4× tread depth, condition, rims/bolts/TPMS, photos, QR wheel-set ID from Assets, season date) · **Fakturaer** (amount, VAT, status, due date, KID, PDF + payment link).
+
+- **Public booking page:** `/book` (or `#/book`). Service → reg. no. (lookup) → free slot (lifts × opening hours ÷ duration) → contact details → confirmation. It creates or links a customer + vehicle and adds a booking.
+- **Automations:**
+  - Bekreftet → notification + SMS/email **draft**.
+  - Ferdig → invoice created + payment status set to "Fakturert".
+  - Season change date → call-in reminder 3 weeks before.
+  - Tread depth "Må byttes" → reminder to offer new tyres.
+- **Control page:** `#/dekk` – overview + booking QR, invoices (PDF / email draft / payment link / mark as paid), Outbox (drafts), Setup (company details, services, capacity, opening hours), Payment & keys.
+- **Nothing is sent automatically.** Email/SMS only become drafts in the Outbox.
+- **Payment page:** `#/betal/<token>`. Vipps / card / pay on collection. These stay **inactive until keys are added**:
+
+| Function | Env vars |
+|---|---|
+| Stripe Checkout | `STRIPE_SECRET_KEY` (use `sk_test_…` first) |
+| Vipps ePayment | `VIPPS_CLIENT_ID`, `VIPPS_CLIENT_SECRET`, `VIPPS_SUBSCRIPTION_KEY`, `VIPPS_MSN`, `VIPPS_ENV=test` |
+| Reg. no. lookup | `VEGVESEN_API_KEY` |
+| SMTP (prepared only) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` |
+| Pay-link signing | `PAY_LINK_SECRET` (optional) |
+
+- **Tests:** `node tests/dekk.mjs [baseUrl]`.

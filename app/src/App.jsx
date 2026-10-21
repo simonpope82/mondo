@@ -9,7 +9,11 @@ import { InstallBanner, OfflineBar, clearOfflineData, useInstall } from './pwa.j
 import { Notifications } from './Home.jsx';
 import AssetsModule from './assets/Assets.jsx';
 import { PublicScan } from './assets/Scan.jsx';
+import Book from './dekk/Book.jsx';
+import Pay from './dekk/Pay.jsx';
+import DekkAdmin from './dekk/DekkAdmin.jsx';
 import { Tag, Camera } from 'lucide-react';
+if (window.location.pathname === '/book' || window.location.pathname === '/book/') history.replaceState(null, '', '/#/book');
 // sticker URLs look like https://<host>/s/ABCD-EFGH → hand over to the hash router
 if (window.location.pathname.startsWith('/s/')) history.replaceState(null, '', '/#/scan/' + encodeURIComponent(decodeURIComponent(window.location.pathname.slice(3))));
 import { LogOut, KeyRound, UsersRound, House, Plus, Search, ChevronDown, Star, MoreHorizontal, Pencil, Copy, Trash2, Briefcase, Check, ChevronsLeft, ChevronsRight } from 'lucide-react';
@@ -39,6 +43,8 @@ export default function App() {
     if (boot && boardId) { const b = boot.boards.find((x) => x.id === boardId); if (b && b.workspace_id !== wsId) setWsId(b.workspace_id); }
   }, [boardId, boot]);
   useEffect(() => { if (wsId) localStorage.setItem('ws', wsId); }, [wsId]);
+  if (hash.startsWith('#/book')) return <Book />;
+  if (hash.startsWith('#/betal/')) return <Pay token={hash.slice(8)} />;
   if (hash.startsWith('#/form/')) return <PublicForm boardId={hash.split('/')[2]} />;
   if (user === undefined) return <div className="loading">Loading…</div>;
   if (!user && hash.startsWith('#/scan/')) return <PublicScan code={hash.split('/')[2]} />;
@@ -56,7 +62,7 @@ export default function App() {
       <div className="app-body">
         <Sidebar boot={boot} ws={ws} setWsId={setWsId} reload={reload} boardId={boardId} hash={hash} onNewBoard={() => setNewBoard(true)} collapsed={collapsed} setCollapsed={setCollapsed} />
         <main className="main">
-          {hash.startsWith('#/assets') || hash.startsWith('#/scan') ? <AssetsModule hash={hash} ctx={ctx} user={user} /> : boardId ? <Board key={boardId} boardId={boardId} ctx={ctx} /> : hash.startsWith('#/users') && user.role === 'admin' ? <UsersPage ctx={ctx} me={user} /> : <Home ctx={ctx} user={user} onNewBoard={() => setNewBoard(true)} />}
+          {hash.startsWith('#/dekk') ? <DekkAdmin hash={hash} user={user} /> : hash.startsWith('#/assets') || hash.startsWith('#/scan') ? <AssetsModule hash={hash} ctx={ctx} user={user} /> : boardId ? <Board key={boardId} boardId={boardId} ctx={ctx} /> : hash.startsWith('#/users') && user.role === 'admin' ? <UsersPage ctx={ctx} me={user} /> : <Home ctx={ctx} user={user} onNewBoard={() => setNewBoard(true)} />}
         </main>
       </div>
       {newBoard && <NewBoardModal boot={boot} ws={ws} onClose={() => setNewBoard(false)} onCreated={async (id) => { setNewBoard(false); await reload(); go('#/board/' + id); }} />}
@@ -110,6 +116,7 @@ function Sidebar({ boot, ws, setWsId, reload, boardId, hash, onNewBoard, collaps
         <button className="icon-btn" onClick={() => setCollapsed(true)} title="Hide menu"><ChevronsLeft size={18} /></button>
       </div>
       <a className={'side-link' + (hash.startsWith('#/assets') || hash.startsWith('#/scan') ? ' active' : '')} href="#/assets" data-testid="side-assets"><Tag size={18} /> Assets</a>
+      <a className={'side-link' + (hash.startsWith('#/dekk') ? ' active' : '')} href="#/dekk" data-testid="side-dekk"><span style={{ fontSize: 17, width: 18, textAlign: 'center' }}>🛞</span> Dekkhotell</a>
       {boot.user?.role === 'admin' && <a className={'side-link' + (hash.startsWith('#/users') ? ' active' : '')} href="#/users" data-testid="side-users"><UsersRound size={18} /> Users</a>}
       {favs.length > 0 && <div className="side-section"><div className="side-title"><Star size={14} fill="#ffcb00" color="#ffcb00" /> Favourites</div>{favs.map((b) => <BoardLink key={b.id} b={b} />)}</div>}
       <div className="side-section">

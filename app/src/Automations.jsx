@@ -30,7 +30,7 @@ function Rule({ r, board, ctx, onChange, onDelete }) {
         </>}
         <b>then</b>
         <Sel value={a.type} onChange={(v) => setA({ type: v })}>
-          <option value="move_group">move item to group</option><option value="set_status">set status</option><option value="notify">notify someone</option><option value="set_date">set date to today</option><option value="time">start/stop time tracking</option>
+          <option value="move_group">move item to group</option><option value="set_status">set status</option><option value="notify">notify someone</option><option value="set_date">set date to today</option><option value="time">start/stop time tracking</option><option value="dk_invoice">🧾 lag faktura (Dekkhotell)</option><option value="dk_confirm">💬 lag bekreftelse-utkast (Dekkhotell)</option>
         </Sel>
         {a.type === 'move_group' && <Sel value={a.group} onChange={(v) => setA({ group: v })}><option value="">pick group</option>{board.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}</Sel>}
         {a.type === 'set_status' && <>

@@ -70,7 +70,7 @@ function createBoard({ workspace_id, name, template = 'blank', icon }) {
     refs[ref] = found ? found.id : createBoard({ workspace_id, template: ref }).id;
   }
   const m = t.make();
-  for (const c of m.columns) if (c.type === 'connect' && c.settings.boardRef) { c.settings.boardId = refs[c.settings.boardRef] || null; }
+  for (const c of m.columns) if (c.type === 'connect' && c.settings.boardRef) { c.settings.boardId = refs[c.settings.boardRef] || (TEMPLATES[c.settings.boardRef] && db.prepare('select id from boards where workspace_id=? and name=? order by pos limit 1').get(workspace_id, TEMPLATES[c.settings.boardRef].name)?.id) || null; }
   for (const c of m.columns) if (c.type === 'mirror' && c.settings.colTitle) {
     const cc = m.columns.find((x) => x.id === c.settings.connectCol); const target = cc && cc.settings.boardId && getBoard(cc.settings.boardId);
     c.settings.colId = target ? target.columns.find((x) => x.title === c.settings.colTitle)?.id || null : null;
@@ -305,6 +305,7 @@ function runAutomations(board_id, item_id, trigger, changed, depth = 0) {
     if (a.type === 'set_status' && a.col) { set[a.col] = a.to || null; log(b.id, i.id, `⚡ Automation set ${colT(a.col)}`); }
     if (a.type === 'set_date' && a.col) { set[a.col] = new Date().toISOString().slice(0, 10); log(b.id, i.id, `⚡ Automation set ${colT(a.col)} to today`); }
     if (a.type === 'notify' && a.person) { const target = a.person === '__owner' ? (b.columns.filter((c) => c.type === 'people').flatMap((c) => i.vals[c.id] || [])) : [a.person]; target.forEach((p) => notify(p, `⚡ ${a.text || 'Item changed'}: “${i.name}” (${b.name})`, b.id, i.id)); }
+    if (a.type && a.type.startsWith('dk_') && DEKK) DEKK.action(a.type, b, i);
     if (a.type === 'time' && a.col) {
       const v = i.vals[a.col] || { total: 0, since: null };
       if (a.mode === 'start' && !v.since) set[a.col] = { total: v.total, since: new Date().toISOString() };
@@ -342,6 +343,9 @@ app.post('/api/forms/:id', wrap((req, res) => {
 // Assets module (GoCodes-style QR asset tracking)
 const ASSETS = require('./assets').setup(db, { me, meName, now, notify, insertItem, getBoard, DATA_DIR, auth });
 ASSETS.routes(app, wrap);
+// Dekkhotell: public booking page, invoices (PDF / e-mail drafts), payment links (Stripe/Vipps – inactive without keys)
+const DEKK = require('./dekk').setup(db, { me, now, notify, insertItem, getBoard, itemRow, log, touch, runAutomations: (...a) => runAutomations(...a), DATA_DIR, ASSETS });
+DEKK.routes(app, wrap);
 
 app.get('/api/health', (req, res) => { try { db.prepare('select 1').get(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false }); } });
 
@@ -351,6 +355,7 @@ if (process.env.SEED_DEMO !== '0') {
   db.transaction(() => require('./seed-kk')(db, { createBoard, insertItem, getBoard, now, cid, ME: ME_SEED }))(); // Kaffeknappen boards (once per database)
   db.transaction(() => require('./seed-more')(db, { createBoard, insertItem, getBoard, now, cid }))(); // Ledelse / admin boards (once per database)
   db.transaction(() => require('./seed-assets')(db, ASSETS, { now, insertItem }))(); // demo assets + QR codes (once per database)
+  db.transaction(() => require('./seed-dekk')(db, { createBoard, insertItem, getBoard, now, cid, DEKK, ASSETS }))(); // Dekkhotell workspace (once per database)
 }
 
 const dist = path.join(__dirname, '..', 'dist');

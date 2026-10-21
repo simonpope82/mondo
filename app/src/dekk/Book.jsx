@@ -1,0 +1,75 @@
+// 🌐 Public booking page (#/book or /book) – phone first, 4 big steps, Norwegian.
+import React, { useEffect, useState } from 'react';
+import { api } from '../api.js';
+import { Car, CalendarDays, User, CheckCircle2, ChevronLeft, Clock, Wrench } from 'lucide-react';
+
+const STEPS = [['Tjeneste', Wrench], ['Bil', Car], ['Tid', CalendarDays], ['Deg', User]];
+export default function Book() {
+  const [cfg, setCfg] = useState(null); const [step, setStep] = useState(0); const [err, setErr] = useState('');
+  const [f, setF] = useState({ service: '', regnr: '', date: '', time: '', name: '', phone: '', email: '', comment: '', consent: true });
+  const [car, setCar] = useState(null); const [days, setDays] = useState([]); const [slots, setSlots] = useState(null); const [done, setDone] = useState(null); const [busy, setBusy] = useState(false);
+  const set = (p) => setF((x) => ({ ...x, ...p }));
+  useEffect(() => { document.title = 'Bestill time'; api.get('/book/config').then(setCfg).catch((e) => setErr(e.message)); }, []);
+  useEffect(() => { if (step === 2 && f.service) api.get('/book/days?service=' + f.service).then((r) => { setDays(r.days); const first = r.days.find((d) => d.free > 0); if (!f.date && first) set({ date: first.date }); }); }, [step, f.service]);
+  useEffect(() => { if (f.date && f.service) { setSlots(null); api.get(`/book/slots?date=${f.date}&service=${f.service}`).then((r) => setSlots(r.slots)); } }, [f.date, f.service]);
+  useEffect(() => { const r = f.regnr.replace(/\s/g, ''); setCar(null); if (r.length < 6) return; const t = setTimeout(() => api.get('/book/regnr/' + encodeURIComponent(r)).then(setCar).catch(() => {}), 350); return () => clearTimeout(t); }, [f.regnr]);
+  if (!cfg) return <div className="bk-page"><div className="bk-card">{err || 'Laster…'}</div></div>;
+  const svc = cfg.services.find((s) => s.id === f.service);
+  const ok = [!!svc, f.regnr.replace(/\s/g, '').length >= 2, !!f.time, f.name.trim() && f.phone.replace(/\D/g, '').length >= 8][step];
+  const submit = async () => { setBusy(true); setErr(''); try { setDone(await api.post('/book/create', f)); } catch (e) { setErr(e.message); if (/ledig/.test(e.message)) { setStep(2); set({ time: '' }); api.get(`/book/slots?date=${f.date}&service=${f.service}`).then((r) => setSlots(r.slots)); } } setBusy(false); };
+  if (done) return (
+    <div className="bk-page"><div className="bk-card bk-done" data-testid="bk-done">
+      <CheckCircle2 size={64} color="#00c875" />
+      <h1>Takk! Timen er bestilt</h1>
+      <div className="bk-sum">
+        <div><Wrench size={20} /> {done.service}</div><div><CalendarDays size={20} /> {done.date_text}</div><div><Clock size={20} /> kl {done.time} ({done.minutes} min)</div><div><Car size={20} /> {done.regnr}</div>
+        <div className="bk-price">Pris fra {done.price} kr</div>
+      </div>
+      <p>Bookingnummer <b data-testid="bk-ref">{done.ref}</b>. Vi sender bekreftelse på SMS{f.email ? ' og e-post' : ''} når timen er godkjent.</p>
+      <p className="muted">Husk låsebolt hvis bilen har det. Betal med Vipps, kort eller på stedet.</p>
+      <button className="bk-btn" onClick={() => { setDone(null); setStep(0); set({ time: '', service: '' }); }}>Bestill en time til</button>
+    </div></div>
+  );
+  return (
+    <div className="bk-page">
+      <header className="bk-head"><div className="bk-logo">🛞</div><div><b>{cfg.company}</b><div className="muted">Bestill dekkskift på 1 minutt</div></div></header>
+      <div className="bk-steps">{STEPS.map(([t, I], k) => <button key={t} className={'bk-step' + (k === step ? ' on' : k < step ? ' done' : '')} disabled={k > step} onClick={() => setStep(k)}><I size={18} /><span>{t}</span></button>)}</div>
+      <div className="bk-card">
+        {step === 0 && <>
+          <h2>Hva trenger du?</h2>
+          <div className="bk-services">{cfg.services.map((s) => <button key={s.id} data-testid={'bk-svc-' + s.id} className={'bk-svc' + (f.service === s.id ? ' on' : '')} onClick={() => { set({ service: s.id, time: '' }); setStep(1); }}>
+            <span className="bk-ico">{s.icon}</span><span className="bk-svc-t"><b>{s.name}</b><small>{s.desc}</small></span><span className="bk-svc-p"><b>{s.price} kr</b><small>{s.minutes} min</small></span></button>)}</div>
+        </>}
+        {step === 1 && <>
+          <h2>Hvilken bil?</h2>
+          <label className="bk-label">Registreringsnummer</label>
+          <div className="bk-plate"><span className="bk-nor">N</span><input data-testid="bk-reg" autoFocus value={f.regnr} onChange={(e) => set({ regnr: e.target.value.toUpperCase() })} placeholder="AB 12345" maxLength={10} autoCapitalize="characters" /></div>
+          {car?.found && <div className="bk-car" data-testid="bk-car"><Car size={18} /> {car.make} {car.model}</div>}
+          {car && !car.found && <div className="muted bk-small">Vi finner bilen når du kommer – helt greit.</div>}
+        </>}
+        {step === 2 && <>
+          <h2>Velg dag og tid</h2>
+          <div className="bk-days">{days.map((d) => <button key={d.date} data-testid={'bk-day-' + d.date} disabled={!d.free} className={'bk-day' + (f.date === d.date ? ' on' : '')} onClick={() => set({ date: d.date, time: '' })}>
+            <small>{d.text.split(' ')[0].slice(0, 3)}</small><b>{d.text.split(' ')[1].split('.').slice(0, 2).join('.')}</b><small>{d.free ? d.free + ' ledige' : 'fullt'}</small></button>)}</div>
+          <div className="bk-times">{slots == null ? 'Laster…' : slots.filter((s) => s.free > 0).length === 0 ? <div className="muted">Ingen ledige tider denne dagen</div> : slots.map((s) => <button key={s.time} data-testid={'bk-time-' + s.time} disabled={!s.free} className={'bk-time' + (f.time === s.time ? ' on' : '')} onClick={() => set({ time: s.time })}>{s.time}</button>)}</div>
+        </>}
+        {step === 3 && <>
+          <h2>Hvem er du?</h2>
+          <label className="bk-label">Navn</label><input className="bk-in" data-testid="bk-name" value={f.name} onChange={(e) => set({ name: e.target.value })} autoComplete="name" />
+          <label className="bk-label">Mobil</label><input className="bk-in" data-testid="bk-phone" value={f.phone} onChange={(e) => set({ phone: e.target.value })} inputMode="tel" autoComplete="tel" placeholder="400 00 000" />
+          <label className="bk-label">E-post (valgfritt)</label><input className="bk-in" data-testid="bk-email" value={f.email} onChange={(e) => set({ email: e.target.value })} inputMode="email" autoComplete="email" />
+          <label className="bk-label">Melding (valgfritt)</label><textarea className="bk-in" value={f.comment} onChange={(e) => set({ comment: e.target.value })} rows={2} placeholder="F.eks. låsebolt ligger i hanskerommet" />
+          <label className="bk-check"><input type="checkbox" checked={f.consent} onChange={(e) => set({ consent: e.target.checked })} /> Send meg SMS om timen og når hjulene skal byttes</label>
+          <div className="bk-sum small"><div>{svc?.icon} {svc?.name} · {svc?.price} kr</div><div>📅 {days.find((d) => d.date === f.date)?.text} kl {f.time}</div><div>🚗 {f.regnr}</div></div>
+        </>}
+        {err && <div className="bk-err" data-testid="bk-err">{err}</div>}
+        <div className="bk-nav">
+          {step > 0 && <button className="bk-back" onClick={() => setStep(step - 1)}><ChevronLeft size={20} /> Tilbake</button>}
+          {step > 0 && step < 3 && <button className="bk-btn" data-testid="bk-next" disabled={!ok} onClick={() => setStep(step + 1)}>Neste</button>}
+          {step === 3 && <button className="bk-btn" data-testid="bk-submit" disabled={!ok || busy} onClick={submit}>{busy ? 'Bestiller…' : 'Bestill time'}</button>}
+        </div>
+      </div>
+      <p className="bk-foot muted">Drevet av mondo · Demo – oppdiktet verksted</p>
+    </div>
+  );
+}
