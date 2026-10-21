@@ -1,15 +1,16 @@
 // 🛞 Dekkhotell control page (#/dekk): boards, booking link + QR, settings (company / services / capacity), invoices, outbox, integrations.
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { CalendarDays, Users, Car, Warehouse, Receipt, Settings, Mail, Plug, Link2, FileText, Send, CreditCard, Check, Plus, Trash2, ExternalLink, Globe, Inbox } from 'lucide-react';
+import { TyreSet, Daily, Customers, TyreLabels, Rules } from './Staff.jsx';
+import { CalendarDays, Users, Car, Warehouse, Receipt, Settings, Mail, Plug, Link2, FileText, Send, CreditCard, Check, Plus, Trash2, ExternalLink, Globe, Inbox, Printer } from 'lucide-react';
 
 const BOARDS = [['bookinger', 'Bookinger', CalendarDays, '#579bfc'], ['kunder', 'Kunder', Users, '#00c875'], ['kjoretoy', 'Kjøretøy', Car, '#fdab3d'], ['lager', 'Dekkhotell lager', Warehouse, '#784bd1'], ['faktura', 'Fakturaer', Receipt, '#ff6d3b']];
-const TABS = [['oversikt', 'Oversikt', Link2], ['nettside', 'Nettside & chat', Globe], ['epost', 'E-post inn', Inbox], ['fakturaer', 'Fakturaer', Receipt], ['utboks', 'Utboks', Mail], ['oppsett', 'Oppsett', Settings], ['integrasjoner', 'Betaling & nøkler', Plug]];
+const TABS = [['dagen', 'I dag', CalendarDays], ['oversikt', 'Oversikt', Link2], ['kunder', 'Kunder', Users], ['etiketter', 'QR-etiketter', Printer], ['nettside', 'Nettside & chat', Globe], ['epost', 'E-post inn', Inbox], ['fakturaer', 'Fakturaer', Receipt], ['utboks', 'Utboks', Mail], ['oppsett', 'Oppsett', Settings], ['integrasjoner', 'Betaling & nøkler', Plug]];
 const DAYS = [[1, 'Man'], [2, 'Tir'], [3, 'Ons'], [4, 'Tor'], [5, 'Fre'], [6, 'Lør'], [0, 'Søn']];
 const kr = (n) => (+n || 0).toLocaleString('nb-NO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' kr';
 
 export default function DekkAdmin({ hash, user }) {
-  const tab = hash.split('/')[2] || 'oversikt';
+  const tab = hash.split('/')[2] || 'dagen';
   const [d, setD] = useState(null); const [inv, setInv] = useState([]); const [out, setOut] = useState([]); const [msg, setMsg] = useState('');
   const load = () => { api.get('/dekk/settings').then(setD); api.get('/dekk/invoices').then((r) => setInv(r.invoices)); api.get('/dekk/outbox').then((r) => setOut(r.outbox)); };
   useEffect(load, []);
@@ -20,8 +21,8 @@ export default function DekkAdmin({ hash, user }) {
   const paid = async (id) => { await api.post(`/dekk/invoice/${id}/paid`, { method: null }); load(); };
   return (
     <div className="dk-page" data-testid="dekk-admin">
-      <h1 className="dk-title">🛞 Dekkhotell</h1>
-      <div className="dk-tabs">{TABS.map(([k, t, I]) => <a key={k} href={'#/dekk/' + k} data-testid={'dk-tab-' + k} className={'dk-tab' + (tab === k ? ' on' : '')}><I size={18} /> {t}</a>)}</div>
+      {tab !== 'hjulsett' && <h1 className="dk-title">🛞 Dekkhotell</h1>}
+      {tab === 'hjulsett' ? <a className="dk-btn" href="#/dekk/dagen" style={{ marginBottom: 12 }}>← I dag</a> : <div className="dk-tabs">{TABS.map(([k, t, I]) => <a key={k} href={'#/dekk/' + k} data-testid={'dk-tab-' + k} className={'dk-tab' + (tab === k ? ' on' : '')}><I size={18} /> {t}</a>)}</div>}
       {msg && <div className="dk-msg" data-testid="dk-msg">{msg}</div>}
       {tab === 'oversikt' && <>
         <div className="dk-tiles">{BOARDS.map(([k, t, I, c]) => s.boards[k] && <a key={k} className="dk-tile" href={'#/board/' + s.boards[k]} style={{ '--c': c }}><I size={34} /><b>{t}</b></a>)}</div>
@@ -45,9 +46,13 @@ export default function DekkAdmin({ hash, user }) {
       {tab === 'utboks' && <div className="dk-box"><p className="muted">📭 Ingenting sendes automatisk. Dette er utkast (SMS og e-post) som er klare når SMS/SMTP er satt opp.</p>
         {out.map((o) => <div key={o.id} className="dk-mail" data-testid="dk-outbox-item"><div className="dk-mail-h"><b>{o.kind === 'sms' ? '💬 SMS' : o.kind === 'question' ? '❓ Spørsmål fra nettsiden' : '✉️ E-post'}</b> til {o.to_addr || '—'} <span className="dk-st">{o.status}</span></div>{o.subject && <div><b>{o.subject}</b></div>}<pre>{o.body}</pre>{o.attachment && <div className="muted">📎 {o.attachment}</div>}</div>)}
         {!out.length && <div className="muted">Tom</div>}</div>}
+      {tab === 'hjulsett' && <TyreSet code={hash.split('/')[3]} />}
+      {tab === 'dagen' && <Daily />}
+      {tab === 'kunder' && <Customers boards={s.boards} admin={user?.role === 'admin'} />}
+      {tab === 'etiketter' && <TyreLabels boards={s.boards} />}
       {tab === 'epost' && <MailIn admin={user?.role === 'admin'} setMsg={setMsg} />}
       {tab === 'nettside' && <SiteEdit admin={user?.role === 'admin'} setMsg={setMsg} />}
-      {tab === 'oppsett' && <Setup s={s} save={save} admin={user?.role === 'admin'} />}
+      {tab === 'oppsett' && <><Setup s={s} save={save} admin={user?.role === 'admin'} /><Rules admin={user?.role === 'admin'} setMsg={setMsg} /></>}
       {tab === 'integrasjoner' && <div className="dk-box"><p className="muted">Nøkler legges inn som miljøvariabler (Render → Environment). Ingen ekte nøkler ligger i koden. Bruk testmodus først.</p>
         <div className="dk-ints">{d.integrations.map((x) => <div key={x.key} className={'dk-int' + (x.active ? ' on' : '')} data-testid={'dk-int-' + x.key}>
           <div className="dk-int-h"><b>{x.name}</b><span className={'dk-badge' + (x.active ? ' on' : '')}>{x.active ? 'Aktiv' : 'Ikke aktiv'}</span></div>

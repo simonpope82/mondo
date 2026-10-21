@@ -94,4 +94,6 @@ module.exports = function seedDekk(db, { createBoard, insertItem, getBoard, now,
   if (inv[0]) { setV(inv[0], { [fc('Status').id]: lbl('Status', 'Betalt'), [fc('Betalingsmåte').id]: lbl('Betalingsmåte', 'Vipps') }); db.prepare('update items set group_id=? where id=?').run(fb.groups[1].id, inv[0]); setV(done[0], { [bb.columns.find((c) => c.title === 'Betaling').id]: bb.columns.find((c) => c.title === 'Betaling').settings.labels.find((x) => x.label === 'Betalt Vipps').id }); }
   if (inv[2]) setV(inv[2], { [fc('Status').id]: lbl('Status', 'Sendt') });
   db.prepare("delete from notifications where text like '🧾 Faktura%'").run();
+  // demo customer login for the portal (#/minside): Kari Demo – 40000101 / demo-kunde (made-up customer)
+  db.prepare('insert or ignore into cust_users values(?,?,?,?,?,?)').run('cu_demo1', kunder[0], '40000101', require('bcryptjs').hashSync('demo-kunde', 10), now(), null);
 };

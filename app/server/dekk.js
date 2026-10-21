@@ -187,6 +187,7 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
     log(fb.id, id, `⚡ Faktura laget fra booking “${bi.name}”`); touch(fb.id);
     const cB = C(bb, 'bookinger', 'Betaling'); const cur = labelName(cB, bi.vals[cB?.id]);
     if (cB && (!cur || cur === 'Ikke betalt')) setVals(bi.id, { [cB.id]: label(cB, 'Fakturert') });
+    try { EXTRA.recompute(true); } catch {}
     notify('p_simon', `🧾 Faktura ${no} laget (${kr(tot)}) – “${bi.name}”`, fb.id, id);
     return id;
   }
@@ -232,6 +233,7 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
   function markPaid(id, method) {
     const fb = B('faktura'); const cS = C(fb, 'faktura', 'Status'), cM = C(fb, 'faktura', 'Betalingsmåte');
     setVals(id, { [cS.id]: label(cS, 'Betalt'), ...(method ? { [cM.id]: label(cM, method) } : {}) }); runAutomations(fb.id, id, 'change', { [cS.id]: label(cS, 'Betalt') }); touch(fb.id);
+    try { EXTRA.recompute(true); } catch {}
     const d = invoiceData(id); notify('p_simon', `💳 Faktura ${d.no} betalt (${method || 'manuelt'})`, fb.id, id);
     const bb = B('bookinger'); const bkId = (itemRow(db.prepare('select * from items where id=?').get(id)).vals[C(fb, 'faktura', 'Booking').id] || [])[0];
     if (bkId) { const cB = C(bb, 'bookinger', 'Betaling'); setVals(bkId, { [cB.id]: label(cB, method === 'Vipps' ? 'Betalt Vipps' : method === 'Kort (Stripe)' ? 'Betalt kort' : 'Betalt') }); }
@@ -257,10 +259,13 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
   const adminOnly = (req) => { if (req.user?.role !== 'admin') throw Object.assign(new Error('Bare administrator'), { status: 403 }); };
   const payInfo = () => ({ stripe: { active: stripeOn(), test: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_') }, vipps: { active: vippsOn(), test: process.env.VIPPS_ENV !== 'production' }, pickup: true });
 
+  const labelNameF = (col, id) => labelName(col, id);
+  const EXTRA = require('./dekk-extra').setup(db, { now, notify, getBoard, itemRow, log, touch, B, C, label, labelName: labelNameF, items, setVals, settings, saveSettings, osloNow, addDays, nbDate, ASSETS, baseUrl, payToken, outbox: (o) => outbox(o) });
   const MAIL = require('./mailin').setup(db, { now, notify, insertItem, getBoard, log, touch, B, C, label, setVals, settings, osloNow, slots, findOrCreateCustomer, findOrCreateVehicle, normReg, nbDate });
   const addMin = (req) => String(req.query.addons || '').split(',').map((id) => (settings().addons || []).find((a) => a.id === id)).filter(Boolean).reduce((a, x) => a + (+x.minutes || 0), 0);
   function routes(app) {
     MAIL.routes(app, { aw, adminOnly, limit });
+    EXTRA.routes(app, { aw, adminOnly, limit });
     require('./site').routes(app, { db, aw, limit, adminOnly, notify, now, outbox: (o) => outbox(o) });
     // public booking
     app.get('/api/book/config', aw(() => { const s = settings(); const n = osloNow(); return { company: s.company.name, services: s.services, addons: s.addons || [], auto_confirm: s.booking?.auto_confirm !== false, capacity: { slot: s.capacity.slot, days_ahead: s.capacity.days_ahead, hours: s.capacity.hours, closed: s.capacity.closed }, today: n.date, ready: !!B('bookinger') }; }));
@@ -346,5 +351,5 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
       { key: 'regnskap', name: 'Regnskap / EHF (Fiken, Tripletex, PowerOffice)', active: false, env: 'FIKEN_TOKEN eller TRIPLETEX_CONSUMER_TOKEN + TRIPLETEX_EMPLOYEE_TOKEN', note: 'Ikke bygget ennå – status-kolonnen «Regnskap» er klar', docs: 'https://developer.tripletex.no' },
     ];
   }
-  return { routes, action, settings, saveSettings, createInvoice, createBooking, slots, B, C, label, payToken, defaultSettings };
+  return { EXTRA: () => EXTRA, routes, action, settings, saveSettings, createInvoice, createBooking, slots, B, C, label, payToken, defaultSettings };
 };

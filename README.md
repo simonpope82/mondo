@@ -116,3 +116,20 @@ Workspace **Dekkhotell** with editable template boards (also available under *Ne
   - **IMAP (read-only, PEEK):** `IMAP_HOST`, `IMAP_PORT` (993), `IMAP_USER`, `IMAP_PASS` (app password), `IMAP_FOLDER`, `IMAP_TLS`. Then switch on "Slå på henting".
   - **Webhook:** `POST /api/mail/inbound/<MAIL_WEBHOOK_SECRET>` with JSON `{from, subject, text}`.
 - **Tests:** `node tests/webbil.mjs`.
+
+## 🏷️ Tyre-set QR, roles, daily overview, customer value
+- **QR label per tyre set:**
+  - Print from `#/dekk/etiketter` or from the tyre-set page (62×29 mm roll; `?template=` for other formats).
+  - A scan (`/s/<code>`) **requires staff login** and then opens the customer + tyre set right away (`#/dekk/hjulsett/<code>`).
+  - Without login, the scan shows no data.
+- **Roles:**
+  - Owner = admin. Workers = staff users; they can view, but only admin can change setup.
+  - Customers get their own login at `/minside`. Staff create it under Dekkhotell → Kunder, and an SMS draft is put in the Outbox, not sent.
+  - Customers use a separate cookie and only see their own bookings, tyres, cars and invoices. They have no access to the staff API.
+- **I dag:** `#/dekk/dagen` – today's and tomorrow's customers with service, add-ons, lift and **shelf location** (plus "Hent"). An optional morning push to staff is set under Oppsett.
+- **Kunder board** gets live columns:
+  - **Livstidsverdi** – paid invoices + paid bookings.
+  - **Bør bestille nye dekk** – Ja / Snart / OK.
+  - **Dekk-anbefaling** – the reason.
+  - The rules (winter/summer mm, age from DOT) are editable under Oppsett.
+- **Demo customer login:** 40000101 / `demo-kunde` (made-up customer Kari Demo).

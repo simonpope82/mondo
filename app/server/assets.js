@@ -231,12 +231,13 @@ function setup(db, h) {
       const code = normCode(req.params.code); const s = settings();
       const a = code && byCode(code);
       if (!req.user) {
+        if (a && a.data.asset_type === 'Hjulsett') return { kind: 'login_required', code: a.code, org: s.org }; // tyre-set labels: customer data → staff only
         if (!a || !a.active) return { kind: 'unknown', code, org: s.org };
         const pub = Object.fromEntries(s.public_fields.filter((k) => a.data[k]).map((k) => [label(k), a.data[k]]));
         if (s.alerts.doc_public && a.data.documentation) pub.Documentation = a.data.documentation;
         return { kind: 'public', code: a.code, org: s.org, title: a.data.asset_type || 'Asset', fields: pub, reward: a.data.reward || null };
       }
-      if (a) return { kind: 'asset', id: a.id, code: a.code };
+      if (a) return { kind: a.data.asset_type === 'Hjulsett' ? 'tyreset' : 'asset', id: a.id, code: a.code };
       if (code && db.prepare('select 1 from qr_codes where code=? and asset_id is null').get(code)) return { kind: 'unassigned', code };
       return { kind: 'unknown', code };
     }));

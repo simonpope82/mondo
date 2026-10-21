@@ -127,7 +127,7 @@ app.post('/api/people', wrap((req) => { const id = cid('p'); const n = db.prepar
 
 // boards
 app.post('/api/boards', wrap((req) => createBoard(req.body)));
-app.get('/api/boards/:id', wrap((req, res) => fullBoard(req.params.id) || notFound(res)));
+app.get('/api/boards/:id', wrap((req, res) => { try { if (DEKK.EXTRA().isKunder(req.params.id)) DEKK.EXTRA().recompute(); } catch (e) { console.error(e.message); } return fullBoard(req.params.id) || notFound(res); }));
 app.patch('/api/boards/:id', wrap((req, res) => {
   const b = getBoard(req.params.id); if (!b) return notFound(res);
   const p = req.body;
@@ -356,6 +356,7 @@ if (process.env.SEED_DEMO !== '0') {
   db.transaction(() => require('./seed-more')(db, { createBoard, insertItem, getBoard, now, cid }))(); // Ledelse / admin boards (once per database)
   db.transaction(() => require('./seed-assets')(db, ASSETS, { now, insertItem }))(); // demo assets + QR codes (once per database)
   db.transaction(() => require('./seed-dekk')(db, { createBoard, insertItem, getBoard, now, cid, DEKK, ASSETS }))(); // Dekkhotell workspace (once per database)
+  try { DEKK.EXTRA().recompute(true); } catch (e) { console.error('recompute', e.message); }
 }
 
 const dist = path.join(__dirname, '..', 'dist');

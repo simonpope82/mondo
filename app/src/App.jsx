@@ -13,8 +13,10 @@ import Book from './dekk/Book.jsx';
 import Pay from './dekk/Pay.jsx';
 import DekkAdmin from './dekk/DekkAdmin.jsx';
 import Site from './dekk/Site.jsx';
+import Portal from './dekk/Portal.jsx';
 import { Tag, Camera } from 'lucide-react';
 if (window.location.pathname === '/book' || window.location.pathname === '/book/') history.replaceState(null, '', '/#/book' + window.location.search);
+if (/^\/minside\/?$/.test(window.location.pathname)) history.replaceState(null, '', '/#/minside');
 const SITE = (window.location.pathname.match(/^\/([a-z0-9-]{2,40})\/?$/) || [])[1];
 // sticker URLs look like https://<host>/s/ABCD-EFGH → hand over to the hash router
 if (window.location.pathname.startsWith('/s/')) history.replaceState(null, '', '/#/scan/' + encodeURIComponent(decodeURIComponent(window.location.pathname.slice(3))));
@@ -47,6 +49,7 @@ export default function App() {
   useEffect(() => { if (wsId) localStorage.setItem('ws', wsId); }, [wsId]);
   if (SITE && !window.location.hash) return <Site slug={SITE} />;
   if (hash.startsWith('#/site/')) return <Site slug={hash.split('/')[2]} />;
+  if (hash.startsWith('#/minside')) return <Portal />;
   if (hash.startsWith('#/book')) return <Book />;
   if (hash.startsWith('#/betal/')) return <Pay token={hash.slice(8)} />;
   if (hash.startsWith('#/form/')) return <PublicForm boardId={hash.split('/')[2]} />;

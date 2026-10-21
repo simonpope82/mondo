@@ -19,7 +19,7 @@ const p = await dc.newPage(); p.on('pageerror', (e) => errs.push('desktop: ' + e
 await step('login', () => login(p));
 let st;
 await step('Dekkhotell page: 5 boards + booking link + QR', async () => {
-  await p.click(T('side-dekk')); await p.waitForSelector(T('dekk-admin'));
+  await p.click(T('side-dekk')); await p.waitForSelector(T('dekk-admin')); await p.click(T('dk-tab-oversikt')); await p.waitForSelector('.dk-tile');
   expect(await p.locator('.dk-tile').count() === 5, 'tiles'); expect((await p.textContent(T('dk-booklink'))).endsWith('/book'), 'link');
   st = (await api(p, '/dekk/settings')).settings; await p.waitForTimeout(400); await p.screenshot({ path: S + '/00-dekkhotell-oversikt.png' });
 });

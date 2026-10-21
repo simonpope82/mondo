@@ -46,7 +46,7 @@ export default function AssetsModule({ hash, ctx, user }) {
 
 function CodeJump({ code }) { // link from a board cell: open the asset (no scan recorded)
   const [msg, setMsg] = useState('Opening ' + code + '…');
-  useEffect(() => { api.get('/scan/' + encodeURIComponent(code)).then((r) => { if (r.kind === 'asset') goto('#/assets/' + r.id, true); else if (r.kind === 'unassigned') goto('#/scan/' + r.code, true); else setMsg('No asset with code ' + code); }); }, [code]);
+  useEffect(() => { api.get('/scan/' + encodeURIComponent(code)).then((r) => { if (r.kind === 'tyreset') goto('#/dekk/hjulsett/' + r.code, true); else if (r.kind === 'asset') goto('#/assets/' + r.id, true); else if (r.kind === 'unassigned') goto('#/scan/' + r.code, true); else setMsg('No asset with code ' + code); }); }, [code]);
   return <div className="loading">{msg}</div>;
 }
 

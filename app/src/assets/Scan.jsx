@@ -58,6 +58,7 @@ export function ScanFlow({ code, go, onDone }) {
     (async () => {
       const r = await api.get('/scan/' + encodeURIComponent(code)).catch((e) => ({ kind: 'error', error: e.message }));
       if (!live) return;
+      if (r.kind === 'tyreset') { const p = await getPos(); await api.post(`/assets/${r.id}/scan`, p ? { ...p } : { note: 'Scanned (no GPS)' }).catch(() => {}); if (live) go('#/dekk/hjulsett/' + r.code, true); return; }
       if (r.kind === 'asset') {
         setSt({ step: 'gps' }); const p = await getPos();
         await api.post(`/assets/${r.id}/scan`, p ? { ...p } : { note: 'Scanned (no GPS)' });
@@ -109,7 +110,7 @@ export function Activate({ code, go }) {
 export function PublicScan({ code }) {
   const [r, setR] = useState(null); const [m, setM] = useState({ name: '', email: '', phone: '', text: '' }); const [sent, setSent] = useState(false); const [err, setErr] = useState(''); const [login, setLogin] = useState(false);
   useEffect(() => { api.get('/scan/' + encodeURIComponent(code)).then(setR).catch(() => setR({ kind: 'unknown' })); }, [code]);
-  if (login) return <Login onLogin={() => window.location.reload()} />;
+  if (login || r?.kind === 'login_required') return <div>{r?.kind === 'login_required' && <div className="ps-lock" data-testid="scan-login-required">🔒 Hjulsett-etikett – logg inn som ansatt for å se kunden</div>}<Login onLogin={() => window.location.reload()} /></div>;
   if (!r) return <div className="loading">Loading…</div>;
   const send = async () => { setErr(''); try { const p = await getPos(6000); await api.post(`/scan/${code}/message`, { ...m, ...(p || {}) }); setSent(true); } catch (e) { setErr(e.message); } };
   return (
