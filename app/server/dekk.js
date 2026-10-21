@@ -33,6 +33,15 @@ const defaultSettings = () => ({
     { id: 'balansering', name: 'Balansering', minutes: 30, price: 600, icon: '⚖️', desc: 'Balansering av 4 hjul.' },
     { id: 'punktering', name: 'Punktering', minutes: 30, price: 450, icon: '🩹', desc: 'Reparasjon av punktert dekk.' },
   ],
+  addons: [
+    { id: 'dekkhotell', name: 'Dekkhotell (lagring 1 sesong)', price: 900, minutes: 0, icon: '🏨' },
+    { id: 'vask', name: 'Hjulvask', price: 200, minutes: 10, icon: '🧽' },
+    { id: 'balansering', name: 'Balansering 4 hjul', price: 600, minutes: 20, icon: '⚖️' },
+    { id: 'ventiler', name: 'Nye ventiler (4 stk)', price: 200, minutes: 10, icon: '🔩' },
+    { id: 'tpms', name: 'TPMS-sjekk / sensor', price: 300, minutes: 10, icon: '📡' },
+    { id: 'monster', name: 'Mønsterdybde-sjekk med rapport', price: 0, minutes: 0, icon: '📏' },
+  ],
+  booking: { auto_confirm: true },
   capacity: { lifts: 3, slot: 30, days_ahead: 21, min_notice_min: 60, hours: { 1: ['08:00', '17:00'], 2: ['08:00', '17:00'], 3: ['08:00', '17:00'], 4: ['08:00', '19:00'], 5: ['08:00', '16:00'], 6: ['09:00', '14:00'], 0: null }, closed: [] },
   invoice: { due_days: 14, mva: 25, prices_incl_mva: true, next_no: 10001 },
   boards: {}, map: {},
@@ -43,7 +52,7 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
   const secretFile = path.join(DATA_DIR, 'dk-pay-secret');
   const SECRET = process.env.PAY_LINK_SECRET || (fs.existsSync(secretFile) ? fs.readFileSync(secretFile, 'utf8') : (() => { const s = crypto.randomBytes(24).toString('hex'); fs.writeFileSync(secretFile, s, { mode: 0o600 }); return s; })());
 
-  const settings = () => { const s = J(db.prepare("select value from meta where key='dekk_settings'").get()?.value, null); const d = defaultSettings(); return s ? { ...d, ...s, capacity: { ...d.capacity, ...s.capacity }, invoice: { ...d.invoice, ...s.invoice }, company: { ...d.company, ...s.company } } : d; };
+  const settings = () => { const s = J(db.prepare("select value from meta where key='dekk_settings'").get()?.value, null); const d = defaultSettings(); return s ? { ...d, ...s, capacity: { ...d.capacity, ...s.capacity }, invoice: { ...d.invoice, ...s.invoice }, company: { ...d.company, ...s.company }, booking: { ...d.booking, ...s.booking }, addons: s.addons || d.addons } : d; };
   const saveSettings = (s) => db.prepare("insert into meta values('dekk_settings', ?) on conflict(key) do update set value=excluded.value").run(JSON.stringify(s));
 
   // column lookup: id saved at setup (survives renames) → fallback by title
@@ -51,6 +60,7 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
   const C = (b, key, title) => { const m = settings().map[key] || {}; const id = m[title]; return b.columns.find((c) => c.id === id) || b.columns.find((c) => c.title === title && c.type !== 'mirror'); };
   const label = (col, name) => col?.settings.labels?.find((l) => l.label.toLowerCase() === String(name).toLowerCase())?.id || null;
   const labelName = (col, id) => col?.settings.labels?.find((l) => l.id === id)?.label || '';
+  const ensureCol = (b, key, title, type) => { if (b.columns.some((c) => c.title === title)) return b; const col = { id: 'c_' + crypto.randomBytes(4).toString('hex'), type, title, settings: {} }; db.prepare('update boards set columns=? where id=?').run(JSON.stringify([...b.columns, col]), b.id); return getBoard(b.id); };
   const items = (b) => db.prepare('select * from items where board_id=? and parent_id is null').all(b.id).map(itemRow);
   const setVals = (id, patch) => { const cur = itemRow(db.prepare('select * from items where id=?').get(id)); db.prepare('update items set vals=?, updated=? where id=?').run(JSON.stringify({ ...cur.vals, ...patch }), now(), id); };
   const baseUrl = (req) => (process.env.PUBLIC_URL || (req ? `${req.protocol}://${req.get('host')}` : '')).replace(/\/$/, '');
@@ -69,12 +79,12 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
     const off = [label(cS, 'Ikke møtt'), label(cS, 'Avlyst')];
     return items(b).filter((i) => i.vals[cD.id] === date && i.vals[cT.id] && !off.includes(i.vals[cS.id])).map((i) => ({ start: toMin(i.vals[cT.id]), dur: +i.vals[cV?.id] || 30, lift: i.vals[cL?.id] }));
   }
-  function slots(date, service) {
+  function slots(date, service, extra = 0) {
     const s = settings(); const cap = s.capacity; const svc = s.services.find((x) => x.id === service) || s.services[0];
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || cap.closed?.includes(date)) return [];
     const hours = cap.hours[new Date(date + 'T12:00:00Z').getUTCDay()]; if (!hours) return [];
     const n = osloNow(); if (date < n.date || date > addDays(n.date, cap.days_ahead)) return [];
-    const open = toMin(hours[0]), close = toMin(hours[1]), step = +cap.slot || 30, dur = +svc.minutes || step;
+    const open = toMin(hours[0]), close = toMin(hours[1]), step = +cap.slot || 30, dur = (+svc.minutes || step) + (+extra || 0);
     const bk = dayBookings(date); const out = [];
     for (let t = open; t + dur <= close; t += step) {
       if (date === n.date && t < n.min + (+cap.min_notice_min || 0)) continue;
@@ -131,25 +141,31 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
     if (!name || phoneKey(phone).length < 8) throw Object.assign(new Error('Skriv navn og mobilnummer'), { status: 400 });
     if (reg.length < 2) throw Object.assign(new Error('Skriv registreringsnummer'), { status: 400 });
     if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw Object.assign(new Error('E-postadressen ser feil ut'), { status: 400 });
-    const slot = slots(date, svc.id).find((x) => x.time === time);
+    const adds = (Array.isArray(body.addons) ? body.addons : []).map((id) => (s.addons || []).find((a) => a.id === id)).filter(Boolean);
+    const extra = adds.reduce((a, x) => a + (+x.minutes || 0), 0); const total = (+svc.price || 0) + adds.reduce((a, x) => a + (+x.price || 0), 0); const minutes = (+svc.minutes || 30) + extra;
+    const slot = slots(date, svc.id, extra).find((x) => x.time === time);
     if (!slot || slot.free < 1) throw Object.assign(new Error('Tiden er ikke ledig lenger – velg en annen'), { status: 409 });
-    const b = B('bookinger');
+    const b = ensureCol(B('bookinger'), 'bookinger', 'Tillegg', 'text');
     const cust = findOrCreateCustomer({ name, phone, email, consent: !!body.consent });
     const veh = findOrCreateVehicle(reg, cust.id, body.vehicle || {});
     const ref = 'B' + crypto.randomBytes(3).toString('hex').toUpperCase();
     const v = (t) => C(b, 'bookinger', t).id;
     const vals = { [v('Dato')]: date, [v('Tid')]: time, [v('Status')]: label(C(b, 'bookinger', 'Status'), 'Bestilt'), [v('Tjeneste')]: label(C(b, 'bookinger', 'Tjeneste'), svc.name),
       [v('Regnr')]: prettyReg(reg), [v('Kunde')]: [cust.id], [v('Kjøretøy')]: [veh.id], [v('Mobil')]: phone, ...(email ? { [v('E-post')]: email } : {}),
-      [v('Løft')]: pickLift(b, date, toMin(time), +svc.minutes || 30), [v('Varighet (min)')]: +svc.minutes || 30, [v('Pris')]: +svc.price || 0,
+      [v('Løft')]: pickLift(b, date, toMin(time), minutes), [v('Varighet (min)')]: minutes, [v('Pris')]: total, ...(adds.length ? { [v('Tillegg')]: adds.map((a) => a.name).join(', ') } : {}),
       [v('Betaling')]: label(C(b, 'bookinger', 'Betaling'), 'Ikke betalt'), [v('Kilde')]: label(C(b, 'bookinger', 'Kilde'), 'Nettbooking'), [v('Bookingref')]: ref,
       ...(body.comment ? { [v('Kommentar')]: String(body.comment).slice(0, 1000) } : {}) };
     const id = insertItem(b.id, b.groups[0].id, `${name} – ${prettyReg(reg)}`, null, vals);
-    log(b.id, id, '🌐 Booket på nett'); runAutomations(b.id, id, 'create', {}); touch(b.id);
+    log(b.id, id, '🌐 Booket på nett' + (body.site ? ` (${String(body.site).slice(0, 40)})` : '')); runAutomations(b.id, id, 'create', {});
+    const auto = s.booking?.auto_confirm !== false; const cSt = C(b, 'bookinger', 'Status');
+    if (auto) { const to = label(cSt, 'Bekreftet'); setVals(id, { [cSt.id]: to }); log(b.id, id, '⚡ Automatisk bekreftet (ledig løft funnet)'); runAutomations(b.id, id, 'change', { [cSt.id]: to }); }
+    touch(b.id);
     notify('p_simon', `📅 Ny nettbooking: ${svc.name} ${nbDate(date)} kl ${time} – ${prettyReg(reg)}`, b.id, id);
-    const text = `Hei ${name.split(' ')[0]}! Takk for bestillingen hos ${s.company.name}.\n${svc.name} ${nbDate(date)} kl ${time}. Regnr ${prettyReg(reg)}.\nPris fra ${svc.price} kr. Ref ${ref}.\nVi bekrefter timen så snart vi kan.`;
+    const brand = String(body.brand || s.company.name).slice(0, 80);
+    const text = `Hei ${name.split(' ')[0]}! Takk for bestillingen hos ${brand}.\n${svc.name}${adds.length ? ' + ' + adds.map((a) => a.name).join(', ') : ''} ${nbDate(date)} kl ${time}. Regnr ${prettyReg(reg)}.\nPris ca. ${total} kr. Ref ${ref}.\n${auto ? 'Timen er bekreftet. Velkommen!' : 'Vi bekrefter timen så snart vi kan.'}`;
     outbox({ kind: 'sms', to: phone, body: text, board_id: b.id, item_id: id });
     if (email) outbox({ kind: 'email', to: email, subject: `Bestilling mottatt – ${svc.name} ${nbDate(date)} kl ${time}`, body: text, board_id: b.id, item_id: id });
-    return { ok: true, ref, service: svc.name, price: svc.price, minutes: svc.minutes, date, date_text: nbDate(date), time, regnr: prettyReg(reg), company: s.company.name, new_customer: cust.created };
+    return { ok: true, ref, confirmed: auto, addons: adds.map((a) => a.name), service: svc.name, price: total, minutes, date, date_text: nbDate(date), time, regnr: prettyReg(reg), company: s.company.name, new_customer: cust.created };
   }
 
   // ---------- invoices ----------
@@ -241,11 +257,15 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
   const adminOnly = (req) => { if (req.user?.role !== 'admin') throw Object.assign(new Error('Bare administrator'), { status: 403 }); };
   const payInfo = () => ({ stripe: { active: stripeOn(), test: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_') }, vipps: { active: vippsOn(), test: process.env.VIPPS_ENV !== 'production' }, pickup: true });
 
+  const MAIL = require('./mailin').setup(db, { now, notify, insertItem, getBoard, log, touch, B, C, label, setVals, settings, osloNow, slots, findOrCreateCustomer, findOrCreateVehicle, normReg, nbDate });
+  const addMin = (req) => String(req.query.addons || '').split(',').map((id) => (settings().addons || []).find((a) => a.id === id)).filter(Boolean).reduce((a, x) => a + (+x.minutes || 0), 0);
   function routes(app) {
+    MAIL.routes(app, { aw, adminOnly, limit });
+    require('./site').routes(app, { db, aw, limit, adminOnly, notify, now, outbox: (o) => outbox(o) });
     // public booking
-    app.get('/api/book/config', aw(() => { const s = settings(); const n = osloNow(); return { company: s.company.name, services: s.services, capacity: { slot: s.capacity.slot, days_ahead: s.capacity.days_ahead, hours: s.capacity.hours, closed: s.capacity.closed }, today: n.date, ready: !!B('bookinger') }; }));
-    app.get('/api/book/slots', aw((req) => ({ date: req.query.date, slots: slots(String(req.query.date || ''), String(req.query.service || '')) })));
-    app.get('/api/book/days', aw((req) => { const s = settings(); const n = osloNow(); const out = []; for (let k = 0; k <= s.capacity.days_ahead; k++) { const d = addDays(n.date, k); const sl = slots(d, String(req.query.service || '')); out.push({ date: d, text: nbDate(d), free: sl.filter((x) => x.free > 0).length }); } return { days: out }; }));
+    app.get('/api/book/config', aw(() => { const s = settings(); const n = osloNow(); return { company: s.company.name, services: s.services, addons: s.addons || [], auto_confirm: s.booking?.auto_confirm !== false, capacity: { slot: s.capacity.slot, days_ahead: s.capacity.days_ahead, hours: s.capacity.hours, closed: s.capacity.closed }, today: n.date, ready: !!B('bookinger') }; }));
+    app.get('/api/book/slots', aw((req) => ({ date: req.query.date, slots: slots(String(req.query.date || ''), String(req.query.service || ''), addMin(req)) })));
+    app.get('/api/book/days', aw((req) => { const s = settings(); const n = osloNow(); const out = []; for (let k = 0; k <= s.capacity.days_ahead; k++) { const d = addDays(n.date, k); const sl = slots(d, String(req.query.service || ''), addMin(req)); out.push({ date: d, text: nbDate(d), free: sl.filter((x) => x.free > 0).length }); } return { days: out }; }));
     app.get('/api/book/regnr/:nr', aw(async (req) => { limit(req, 120); const r = normReg(req.params.nr); return r.length < 2 ? { found: false } : regLookup(r); }));
     app.post('/api/book/create', aw((req) => { limit(req, 20); return createBooking(req.body || {}); }));
 
@@ -255,6 +275,8 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
       if (b.company) next.company = { ...cur.company, ...b.company };
       if (Array.isArray(b.services)) next.services = b.services.filter((x) => x && x.name).map((x, k) => ({ id: String(x.id || 's' + k).replace(/\W/g, '_'), name: String(x.name).slice(0, 60), minutes: Math.max(5, +x.minutes || 30), price: Math.max(0, +x.price || 0), icon: String(x.icon || '🔧').slice(0, 4), desc: String(x.desc || '').slice(0, 200) }));
       if (b.capacity) next.capacity = { ...cur.capacity, ...b.capacity, lifts: Math.max(1, Math.min(20, +(b.capacity.lifts ?? cur.capacity.lifts))), slot: Math.max(5, +(b.capacity.slot ?? cur.capacity.slot)) };
+      if (Array.isArray(b.addons)) next.addons = b.addons.filter((x) => x && x.name).map((x, k) => ({ id: String(x.id || 'a' + k).replace(/\W/g, '_'), name: String(x.name).slice(0, 60), minutes: Math.max(0, +x.minutes || 0), price: Math.max(0, +x.price || 0), icon: String(x.icon || '➕').slice(0, 4) }));
+      if (b.booking) next.booking = { ...cur.booking, auto_confirm: !!b.booking.auto_confirm };
       if (b.invoice) next.invoice = { ...cur.invoice, due_days: +(b.invoice.due_days ?? cur.invoice.due_days), mva: +(b.invoice.mva ?? cur.invoice.mva) };
       // make sure every service exists as a Tjeneste label on Bookinger (so the board stays editable + in sync)
       const bb = B('bookinger'); if (bb) { const cT = C(bb, 'bookinger', 'Tjeneste'); const missing = next.services.filter((x) => !label(cT, x.name)); if (missing.length) { const cols = bb.columns.map((c) => (c.id === cT.id ? { ...c, settings: { ...c.settings, labels: [...c.settings.labels.filter((l) => l.label), ...missing.map((x) => ({ id: 'l_' + crypto.randomBytes(3).toString('hex'), label: x.name, color: '#0086c0' })), { id: 'l_' + crypto.randomBytes(3).toString('hex'), label: '', color: '#c4c4c4' }] } } : c)); db.prepare('update boards set columns=? where id=?').run(JSON.stringify(cols), bb.id); } }

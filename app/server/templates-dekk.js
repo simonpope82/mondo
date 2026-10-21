@@ -51,7 +51,7 @@ function bookinger() {
     col('people', 'Mekaniker'), col('numbers', 'Varighet (min)'), col('numbers', 'Pris', { unit: 'kr' }),
     st('Betaling', 'Ikke betalt[#df2f4a]; Betales ved henting[#fdab3d]; Betalt Vipps[#ff5ac4]; Betalt kort[#579bfc]; Fakturert[#784bd1]; Betalt[#00c875]'),
     st('Kilde', 'Nettbooking[#00c875]; Telefon[#579bfc]; Drop-in[#fdab3d]; Innkalling[#784bd1]'),
-    col('long_text', 'Kommentar'), col('text', 'Bookingref'),
+    col('text', 'Tillegg'), col('long_text', 'Kommentar'), col('text', 'Bookingref'),
   ];
   const groups = [grp('Nye bookinger', '#fdab3d'), grp('Bekreftet', '#579bfc'), grp('Ferdig', '#00c875'), grp('Ikke møtt / avlyst', '#df2f4a')];
   const s = by(columns, 'Status');

@@ -41,7 +41,7 @@ await step('automation: booking → Ferdig creates invoice + Betaling=Fakturert'
   const before = (await api(p, '/dekk/invoices')).invoices.length;
   const bk = await board(p, st.boards.bookinger);
   const cS = bk.columns.find((c) => c.title === 'Status'); const ferdig = cS.settings.labels.find((l) => l.label === 'Ferdig').id;
-  const it = bk.items.find((i) => i.vals[cS.id] === cS.settings.labels.find((l) => l.label === 'Møtt').id); expect(it, 'Møtt item');
+  const lid = (n) => cS.settings.labels.find((l) => l.label === n).id; const it = bk.items.find((i) => i.vals[cS.id] === lid('Møtt')) || bk.items.find((i) => i.vals[cS.id] === lid('Bekreftet')); expect(it, 'Møtt/Bekreftet item');
   await api(p, '/items/' + it.id, { vals: { [cS.id]: ferdig } }, 'patch');
   const inv = (await api(p, '/dekk/invoices')).invoices; expect(inv.length === before + 1, 'invoice count ' + inv.length); newInv = inv[0];
   const b2 = await board(p, st.boards.bookinger); const cB = b2.columns.find((c) => c.title === 'Betaling');
@@ -79,7 +79,7 @@ const q = await pc.newPage(); q.on('pageerror', (e) => errs.push('phone: ' + e.m
 let ref;
 await step('phone: /book → service → reg nr lookup', async () => {
   await q.goto(BASE + '/book'); await q.waitForSelector(T('bk-svc-hjulskift_hotell')); await q.screenshot({ path: S + '/01a-booking-mobil-tjeneste.png' });
-  await q.click(T('bk-svc-hjulskift_hotell')); await q.fill(T('bk-reg'), 'DM 10002'); await q.waitForSelector(T('bk-car')); expect((await q.textContent(T('bk-car'))).includes('ID.4'), 'car');
+  await q.click(T('bk-svc-hjulskift_hotell')); await q.click(T('bk-next')); await q.fill(T('bk-reg'), 'DM 10002'); await q.waitForSelector(T('bk-car')); expect((await q.textContent(T('bk-car'))).includes('ID.4'), 'car');
   await q.screenshot({ path: S + '/01b-booking-mobil-regnr.png' }); await q.click(T('bk-next'));
 });
 await step('phone: pick day + free time', async () => {

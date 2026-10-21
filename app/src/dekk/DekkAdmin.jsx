@@ -1,10 +1,10 @@
 // 🛞 Dekkhotell control page (#/dekk): boards, booking link + QR, settings (company / services / capacity), invoices, outbox, integrations.
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { CalendarDays, Users, Car, Warehouse, Receipt, Settings, Mail, Plug, Link2, FileText, Send, CreditCard, Check, Plus, Trash2, ExternalLink } from 'lucide-react';
+import { CalendarDays, Users, Car, Warehouse, Receipt, Settings, Mail, Plug, Link2, FileText, Send, CreditCard, Check, Plus, Trash2, ExternalLink, Globe, Inbox } from 'lucide-react';
 
 const BOARDS = [['bookinger', 'Bookinger', CalendarDays, '#579bfc'], ['kunder', 'Kunder', Users, '#00c875'], ['kjoretoy', 'Kjøretøy', Car, '#fdab3d'], ['lager', 'Dekkhotell lager', Warehouse, '#784bd1'], ['faktura', 'Fakturaer', Receipt, '#ff6d3b']];
-const TABS = [['oversikt', 'Oversikt', Link2], ['fakturaer', 'Fakturaer', Receipt], ['utboks', 'Utboks', Mail], ['oppsett', 'Oppsett', Settings], ['integrasjoner', 'Betaling & nøkler', Plug]];
+const TABS = [['oversikt', 'Oversikt', Link2], ['nettside', 'Nettside & chat', Globe], ['epost', 'E-post inn', Inbox], ['fakturaer', 'Fakturaer', Receipt], ['utboks', 'Utboks', Mail], ['oppsett', 'Oppsett', Settings], ['integrasjoner', 'Betaling & nøkler', Plug]];
 const DAYS = [[1, 'Man'], [2, 'Tir'], [3, 'Ons'], [4, 'Tor'], [5, 'Fre'], [6, 'Lør'], [0, 'Søn']];
 const kr = (n) => (+n || 0).toLocaleString('nb-NO', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' kr';
 
@@ -43,8 +43,10 @@ export default function DekkAdmin({ hash, user }) {
           {!inv.length && <tr><td colSpan={6} className="muted">Ingen fakturaer ennå – sett en booking til «Ferdig».</td></tr>}
         </tbody></table></div>}
       {tab === 'utboks' && <div className="dk-box"><p className="muted">📭 Ingenting sendes automatisk. Dette er utkast (SMS og e-post) som er klare når SMS/SMTP er satt opp.</p>
-        {out.map((o) => <div key={o.id} className="dk-mail" data-testid="dk-outbox-item"><div className="dk-mail-h"><b>{o.kind === 'sms' ? '💬 SMS' : '✉️ E-post'}</b> til {o.to_addr || '—'} <span className="dk-st">{o.status}</span></div>{o.subject && <div><b>{o.subject}</b></div>}<pre>{o.body}</pre>{o.attachment && <div className="muted">📎 {o.attachment}</div>}</div>)}
+        {out.map((o) => <div key={o.id} className="dk-mail" data-testid="dk-outbox-item"><div className="dk-mail-h"><b>{o.kind === 'sms' ? '💬 SMS' : o.kind === 'question' ? '❓ Spørsmål fra nettsiden' : '✉️ E-post'}</b> til {o.to_addr || '—'} <span className="dk-st">{o.status}</span></div>{o.subject && <div><b>{o.subject}</b></div>}<pre>{o.body}</pre>{o.attachment && <div className="muted">📎 {o.attachment}</div>}</div>)}
         {!out.length && <div className="muted">Tom</div>}</div>}
+      {tab === 'epost' && <MailIn admin={user?.role === 'admin'} setMsg={setMsg} />}
+      {tab === 'nettside' && <SiteEdit admin={user?.role === 'admin'} setMsg={setMsg} />}
       {tab === 'oppsett' && <Setup s={s} save={save} admin={user?.role === 'admin'} />}
       {tab === 'integrasjoner' && <div className="dk-box"><p className="muted">Nøkler legges inn som miljøvariabler (Render → Environment). Ingen ekte nøkler ligger i koden. Bruk testmodus først.</p>
         <div className="dk-ints">{d.integrations.map((x) => <div key={x.key} className={'dk-int' + (x.active ? ' on' : '')} data-testid={'dk-int-' + x.key}>
@@ -55,7 +57,7 @@ export default function DekkAdmin({ hash, user }) {
 }
 
 function Setup({ s, save, admin }) {
-  const [c, setC] = useState(s.company); const [sv, setSv] = useState(s.services); const [cap, setCap] = useState(s.capacity); const [iv, setIv] = useState(s.invoice);
+  const [c, setC] = useState(s.company); const [sv, setSv] = useState(s.services); const [cap, setCap] = useState(s.capacity); const [iv, setIv] = useState(s.invoice); const [ad, setAd] = useState(s.addons || []); const [auto, setAuto] = useState(s.booking?.auto_confirm !== false);
   const dis = !admin;
   return <>
     {!admin && <div className="dk-msg">Bare administrator kan endre oppsettet.</div>}
@@ -72,6 +74,16 @@ function Setup({ s, save, admin }) {
       <button className="dk-btn" disabled={dis} onClick={() => setSv([...sv, { id: 'ny' + Date.now(), name: 'Ny tjeneste', minutes: 30, price: 500, icon: '🔧', desc: '' }])}><Plus size={16} /> Ny tjeneste</button>
       <button className="dk-save" disabled={dis} onClick={() => save({ services: sv })}>Lagre tjenester</button>
       <p className="muted">Nye tjenester legges også til som etikett i «Tjeneste» på Bookinger.</p></div>
+    <div className="dk-box"><h3>➕ Tillegg (kunden kan krysse av)</h3>
+      <table className="dk-table"><thead><tr><th>Ikon</th><th>Navn</th><th>+ Min</th><th>+ Pris</th><th></th></tr></thead><tbody>
+        {ad.map((x, k) => { const u = (p) => setAd(ad.map((y, j) => (j === k ? { ...y, ...p } : y))); return <tr key={k}>
+          <td><input disabled={dis} className="dk-ico" value={x.icon} onChange={(e) => u({ icon: e.target.value })} /></td><td><input disabled={dis} value={x.name} onChange={(e) => u({ name: e.target.value })} /></td>
+          <td><input disabled={dis} type="number" className="dk-num" value={x.minutes} onChange={(e) => u({ minutes: +e.target.value })} /></td><td><input disabled={dis} type="number" className="dk-num" value={x.price} onChange={(e) => u({ price: +e.target.value })} /></td>
+          <td><button disabled={dis} className="dk-btn" onClick={() => setAd(ad.filter((_, j) => j !== k))}><Trash2 size={16} /></button></td></tr>; })}
+      </tbody></table>
+      <button className="dk-btn" disabled={dis} onClick={() => setAd([...ad, { id: 'a' + Date.now(), name: 'Nytt tillegg', minutes: 0, price: 100, icon: '➕' }])}><Plus size={16} /> Nytt tillegg</button>
+      <button className="dk-save" disabled={dis} onClick={() => save({ addons: ad })} data-testid="dk-save-addons">Lagre tillegg</button>
+      <label className="bk-check"><input disabled={dis} type="checkbox" checked={auto} onChange={(e) => { setAuto(e.target.checked); save({ booking: { auto_confirm: e.target.checked } }); }} /> ✅ Bekreft nettbookinger automatisk (når et løft er ledig)</label></div>
     <div className="dk-box"><h3>🏗️ Kapasitet</h3><div className="dk-grid">
       <label><span>Antall løft / plasser</span><input disabled={dis} type="number" data-testid="dk-lifts" value={cap.lifts} onChange={(e) => setCap({ ...cap, lifts: +e.target.value })} /></label>
       <label><span>Tidsluke (min)</span><input disabled={dis} type="number" value={cap.slot} onChange={(e) => setCap({ ...cap, slot: +e.target.value })} /></label>
@@ -88,5 +100,74 @@ function Setup({ s, save, admin }) {
       <label><span>Betalingsfrist (dager)</span><input disabled={dis} type="number" value={iv.due_days} onChange={(e) => setIv({ ...iv, due_days: +e.target.value })} /></label>
       <label><span>MVA %</span><input disabled={dis} type="number" value={iv.mva} onChange={(e) => setIv({ ...iv, mva: +e.target.value })} /></label></div>
       <button className="dk-save" disabled={dis} onClick={() => save({ invoice: iv })}>Lagre faktura</button><p className="muted">Priser på tjenester er inkl. mva.</p></div>
+  </>;
+}
+
+// ---------- 🌐 Nettside & chat editor ----------
+const SLUG = 'web-bil';
+function SiteEdit({ admin, setMsg }) {
+  const [s, setS] = useState(null);
+  useEffect(() => { api.get('/dekk/site/' + SLUG).then(setS); }, []);
+  if (!s) return <div className="dk-box">Laster…</div>;
+  const dis = !admin; const u = (p) => setS({ ...s, ...p });
+  const save = async () => { setS(await api.put('/dekk/site/' + SLUG, s)); setMsg('✅ Nettsiden er lagret'); setTimeout(() => setMsg(''), 2500); };
+  const F = ({ k, t, area }) => <label><span>{t}</span>{area ? <textarea disabled={dis} rows={3} defaultValue={s[k]} onBlur={(e) => u({ [k]: e.target.value })} /> : <input disabled={dis} defaultValue={s[k]} onBlur={(e) => u({ [k]: e.target.value })} />}</label>;
+  const List = ({ k, fields, add }) => <><table className="dk-table"><tbody>{s[k].map((x, i) => <tr key={i + (x.id || x.title || x.name || x.day || '')}>
+    {fields.map(([f, w]) => <td key={f} style={{ width: w }}>{f === 'a' ? <textarea disabled={dis} rows={2} defaultValue={x[f]} onBlur={(e) => u({ [k]: s[k].map((y, j) => (j === i ? { ...y, [f]: e.target.value } : y)) })} className={/^\s*\[/.test(x[f]) ? 'dk-ph' : ''} />
+      : <input disabled={dis} defaultValue={x[f]} placeholder={f} onBlur={(e) => u({ [k]: s[k].map((y, j) => (j === i ? { ...y, [f]: e.target.value } : y)) })} className={/^\s*\[/.test(x[f]) ? 'dk-ph' : ''} />}</td>)}
+    <td style={{ width: 40 }}><button disabled={dis} className="dk-btn" onClick={() => u({ [k]: s[k].filter((_, j) => j !== i) })}><Trash2 size={16} /></button></td></tr>)}</tbody></table>
+    <button className="dk-btn" disabled={dis} onClick={() => u({ [k]: [...s[k], add()] })}><Plus size={16} /> Legg til</button></>;
+  return <>
+    <div className="dk-box dk-booklink"><div><h3>🌐 {s.full_name}</h3><a href={'/' + SLUG} target="_blank" rel="noreferrer" data-testid="dk-sitelink">{window.location.origin}/{SLUG}</a>
+      <p className="muted">🟨 Gule felt / [klammer] = plassholdere som må fylles inn. Trykk <b>Lagre nettside</b> etterpå.</p></div>
+      <button className="dk-save" disabled={dis} onClick={save} data-testid="dk-save-site">Lagre nettside</button></div>
+    <div className="dk-box"><h3>✏️ Tekster</h3><div className="dk-grid">
+      <F k="name" t="Kort navn" /><F k="full_name" t="Fullt navn" /><F k="hero_title" t="Stor overskrift" /><F k="hero_text" t="Undertekst" area /><F k="about" t="Om oss" area /><F k="price_note" t="Pris-merknad" />
+      <F k="phone" t="Telefon" /><F k="email" t="E-post" /><F k="address" t="Adresse" /><F k="postal" t="Postnr / sted" /><F k="area" t="Område" /><F k="directions" t="Veibeskrivelse" area />
+      <F k="lat" t="Kart: breddegrad" /><F k="lng" t="Kart: lengdegrad" /><F k="color" t="Farge (hex)" /><F k="bot_name" t="Chat-navn" /><F k="bot_hello" t="Chat-hilsen" area />
+    </div></div>
+    <div className="dk-box"><h3>🔧 Tjenester på siden</h3><List k="services" fields={[['icon', 50], ['title', 160], ['text'], ['price', 140]]} add={() => ({ icon: '🔧', title: 'Ny tjeneste', text: '', price: '[pris – fylles inn]' })} /></div>
+    <div className="dk-box"><h3>💰 Prisliste</h3><List k="prices" fields={[['name'], ['price', 180]]} add={() => ({ name: 'Ny pris', price: '[kr – fylles inn]' })} /></div>
+    <div className="dk-box"><h3>🕗 Åpningstider</h3><List k="hours" fields={[['day', 200], ['time']]} add={() => ({ day: 'Dag', time: '' })} /></div>
+    <div className="dk-box" data-testid="dk-faq"><h3>🤖 Chat: spørsmål og svar</h3><p className="muted">Chatten finner svaret ved å se etter ord i spørsmålet og i «stikkord». Svar i [klammer] = ikke besvart ennå – da tilbyr chatten «Send spørsmål».</p>
+      <List k="faqs" fields={[['q', 220], ['a'], ['keywords', 220]]} add={() => ({ id: 'f' + Date.now(), q: 'Nytt spørsmål?', a: '[Svar – fylles inn]', keywords: '' })} /></div>
+    <button className="dk-save" disabled={dis} onClick={save}>Lagre nettside</button>
+  </>;
+}
+
+// ---------- 📧 E-post inn ----------
+const MISS = { name: 'navn', phone: 'mobil', regnr: 'regnr', date: 'dato', time: 'tid', service: 'tjeneste' };
+function MailIn({ admin, setMsg }) {
+  const [d, setD] = useState(null); const [c, setC] = useState(null);
+  const [t, setT] = useState({ from: 'Ola Test <ola.test@example.com>', subject: 'Dekkskift', text: 'Hei! Kan jeg få skifte til vinterdekk fredag kl 10? Bilen er DM 10004. Ring meg på 400 00 104.\nMvh Per Fiktiv' }); const [pv, setPv] = useState(null);
+  const load = () => api.get('/dekk/mail').then((r) => { setD(r); setC(r.config); });
+  useEffect(() => { load(); }, []);
+  if (!d) return <div className="dk-box">Laster…</div>;
+  const dis = !admin;
+  const save = async () => { await api.put('/dekk/mail', c); setMsg('✅ Lagret'); load(); };
+  const test = async (preview) => { const r = await api.post('/dekk/mail/test', { ...t, preview }); if (preview) setPv(r.parsed); else { setMsg(r.complete ? '✅ Booking laget fra test-e-post' : '⚠️ Laget som «Må sjekkes» – ' + r.why); load(); } };
+  return <>
+    <div className="dk-box"><h3>📧 Bookinger på e-post → rett inn i mondo</h3>
+      <p className="muted">E-post blir lest automatisk. Navn, mobil, regnr, dato, tid og tjeneste hentes ut. Mangler noe → havner i gruppen «📧 E-post – må sjekkes». <b>Vi svarer aldri automatisk.</b></p>
+      <div className="dk-grid">
+        <label><span>Bedriftens e-post</span><input disabled={dis} data-testid="mail-address" value={c.address} placeholder="[e-post – fylles inn]" onChange={(e) => setC({ ...c, address: e.target.value })} /></label>
+        <label><span>Leverandør</span><input disabled={dis} value={c.provider} placeholder="f.eks. Gmail, Outlook, Telenor/online.no" onChange={(e) => setC({ ...c, provider: e.target.value })} /></label>
+        <label><span>Sjekk hvert (min)</span><input disabled={dis} type="number" value={c.poll_min} onChange={(e) => setC({ ...c, poll_min: +e.target.value })} /></label>
+      </div>
+      <label className="bk-check"><input disabled={dis} type="checkbox" checked={c.enabled} onChange={(e) => setC({ ...c, enabled: e.target.checked })} /> Slå på henting av e-post (IMAP)</label>
+      <button className="dk-save" disabled={dis} onClick={save}>Lagre</button></div>
+    <div className="dk-ints">
+      <div className={'dk-int' + (d.imap.active ? ' on' : '')} data-testid="mail-imap"><div className="dk-int-h"><b>IMAP (leser innboksen)</b><span className={'dk-badge' + (d.imap.active ? ' on' : '')}>{d.imap.active ? 'Nøkler lagt inn' : 'Ikke aktiv'}</span></div>
+        <code>IMAP_HOST, IMAP_PORT=993, IMAP_USER, IMAP_PASS (app-passord), IMAP_FOLDER=INBOX</code><div className="muted">Bare lesing. Mailer blir ikke merket, flyttet eller slettet.</div>
+        {d.imap.last_poll && <div className="muted">Sist sjekket: {new Date(d.imap.last_poll).toLocaleString('nb-NO')}</div>}{d.imap.last_error && <div className="bk-err">{d.imap.last_error}</div>}</div>
+      <div className={'dk-int' + (d.webhook.active ? ' on' : '')} data-testid="mail-webhook"><div className="dk-int-h"><b>Webhook (videresending)</b><span className={'dk-badge' + (d.webhook.active ? ' on' : '')}>{d.webhook.active ? 'Aktiv' : 'Ikke aktiv'}</span></div>
+        <code>POST {window.location.origin}{d.webhook.path}</code><div className="muted">JSON: from, subject, text. Krever MAIL_WEBHOOK_SECRET.</div></div>
+    </div>
+    <div className="dk-box"><h3>🧪 Test med en e-post</h3><div className="dk-grid"><label><span>Fra</span><input value={t.from} onChange={(e) => setT({ ...t, from: e.target.value })} /></label><label><span>Emne</span><input value={t.subject} onChange={(e) => setT({ ...t, subject: e.target.value })} /></label></div>
+      <textarea className="bk-in" rows={4} data-testid="mail-text" value={t.text} onChange={(e) => setT({ ...t, text: e.target.value })} style={{ marginTop: 8 }} />
+      <button className="dk-btn" onClick={() => test(true)} data-testid="mail-preview">🔍 Se hva som hentes ut</button> <button className="dk-save" disabled={dis} onClick={() => test(false)} data-testid="mail-create">➕ Lag booking</button>
+      {pv && <div className="dk-parsed" data-testid="mail-parsed">{Object.keys(MISS).map((k) => <span key={k} className={pv[k] ? 'ok' : 'no'}>{pv[k] ? '✅' : '❓'} {MISS[k]}: <b>{pv[k] || '—'}</b></span>)}</div>}</div>
+    <div className="dk-box"><h3>📥 Siste e-poster</h3><table className="dk-table" data-testid="mail-log"><tbody>{d.log.map((r) => <tr key={r.id}><td>{new Date(r.created).toLocaleString('nb-NO')}</td><td>{r.from_addr}</td><td>{r.subject}</td><td><span className={'dk-st' + (r.status === 'Booking laget' ? ' st-Betalt' : ' st-Forfalt')}>{r.status}</span></td><td className="muted">{r.source}</td></tr>)}
+      {!d.log.length && <tr><td className="muted">Ingen ennå</td></tr>}</tbody></table></div>
   </>;
 }

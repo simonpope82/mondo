@@ -105,3 +105,14 @@ Workspace **Dekkhotell** with editable template boards (also available under *Ne
 | Pay-link signing | `PAY_LINK_SECRET` (optional) |
 
 - **Tests:** `node tests/dekk.mjs [baseUrl]`.
+
+## 🌐 Landing page + chat (Web-Bil) and 📧 e-mail intake
+- **Landing page:** `/web-bil` – edit everything under `#/dekk/nettside` (texts, services, prices, opening hours, map, chat Q&A). Fields in `[brackets]` are placeholders.
+- **Booking:** `/book?site=web-bil` uses Web-Bil branding. Customers can tick add-ons, which you edit under Oppsett. Online bookings are confirmed automatically when a lift is free (this can be switched off).
+- **Chat:** answers by keyword/fuzzy matching against the Q&A list – no AI key needed. If an answer is missing or still a placeholder, it offers "Send spørsmål" (the question goes to the Outbox + a notification) or "Bestill time".
+- **E-mail intake:** `#/dekk/epost`.
+  - Mail is parsed for name, phone, reg. no., date, time and service and becomes an item on **Bookinger**. If something is missing, the item goes to the group "📧 E-post – må sjekkes".
+  - **Nothing is ever replied to.**
+  - **IMAP (read-only, PEEK):** `IMAP_HOST`, `IMAP_PORT` (993), `IMAP_USER`, `IMAP_PASS` (app password), `IMAP_FOLDER`, `IMAP_TLS`. Then switch on "Slå på henting".
+  - **Webhook:** `POST /api/mail/inbound/<MAIL_WEBHOOK_SECRET>` with JSON `{from, subject, text}`.
+- **Tests:** `node tests/webbil.mjs`.
