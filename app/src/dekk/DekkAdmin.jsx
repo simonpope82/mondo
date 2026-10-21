@@ -127,11 +127,13 @@ function SiteEdit({ admin, setMsg }) {
       <p className="muted">🟨 Gule felt / [klammer] = plassholdere som må fylles inn. Trykk <b>Lagre nettside</b> etterpå.</p></div>
       <button className="dk-save" disabled={dis} onClick={save} data-testid="dk-save-site">Lagre nettside</button></div>
     <div className="dk-box"><h3>✏️ Tekster</h3><div className="dk-grid">
-      <F k="name" t="Kort navn" /><F k="full_name" t="Fullt navn" /><F k="hero_title" t="Stor overskrift" /><F k="hero_text" t="Undertekst" area /><F k="about" t="Om oss" area /><F k="price_note" t="Pris-merknad" />
+      <F k="eyebrow" t="Liten tekst over overskrift" /><F k="hero_image" t="Hovedbilde (URL)" /><F k="hotel_title" t="Dekkhotell: overskrift" /><F k="hotel_text" t="Dekkhotell: tekst" area /><F k="hotel_image" t="Dekkhotell: bilde (URL)" /><F k="rating" t="Vurdering (omtaler)" /><F k="name" t="Kort navn" /><F k="full_name" t="Fullt navn" /><F k="hero_title" t="Stor overskrift" /><F k="hero_text" t="Undertekst" area /><F k="about" t="Om oss" area /><F k="price_note" t="Pris-merknad" />
       <F k="phone" t="Telefon" /><F k="email" t="E-post" /><F k="address" t="Adresse" /><F k="postal" t="Postnr / sted" /><F k="area" t="Område" /><F k="directions" t="Veibeskrivelse" area />
-      <F k="lat" t="Kart: breddegrad" /><F k="lng" t="Kart: lengdegrad" /><F k="color" t="Farge (hex)" /><F k="bot_name" t="Chat-navn" /><F k="bot_hello" t="Chat-hilsen" area />
+      <F k="lat" t="Kart: breddegrad" /><F k="lng" t="Kart: lengdegrad" /><F k="accent" t="Aksentfarge (hex)" /><F k="bot_name" t="Chat-navn" /><F k="bot_hello" t="Chat-hilsen" area />
     </div></div>
     <div className="dk-box"><h3>🔧 Tjenester på siden</h3><List k="services" fields={[['icon', 50], ['title', 160], ['text'], ['price', 140]]} add={() => ({ icon: '🔧', title: 'Ny tjeneste', text: '', price: '[pris – fylles inn]' })} /></div>
+    <div className="dk-box"><h3>📊 Tall under overskriften</h3><List k="stats" fields={[['value', 200], ['label']]} add={() => ({ value: '[tall]', label: 'Tekst' })} /></div>
+    <div className="dk-box"><h3>⭐ Kundeomtaler</h3><List k="reviews" fields={[['text'], ['name', 180], ['stars', 70]]} add={() => ({ text: '[Kundeomtale – fylles inn]', name: '[Navn]', stars: 5 })} /></div>
     <div className="dk-box"><h3>💰 Prisliste</h3><List k="prices" fields={[['name'], ['price', 180]]} add={() => ({ name: 'Ny pris', price: '[kr – fylles inn]' })} /></div>
     <div className="dk-box"><h3>🕗 Åpningstider</h3><List k="hours" fields={[['day', 200], ['time']]} add={() => ({ day: 'Dag', time: '' })} /></div>
     <div className="dk-box" data-testid="dk-faq"><h3>🤖 Chat: spørsmål og svar</h3><p className="muted">Chatten finner svaret ved å se etter ord i spørsmålet og i «stikkord». Svar i [klammer] = ikke besvart ennå – da tilbyr chatten «Send spørsmål».</p>

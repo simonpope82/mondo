@@ -9,6 +9,12 @@ const DEFAULTS = {
     slug: 'web-bil', name: 'Web-Bil', full_name: 'Web-Bil Bjørn Erik Walle', color: '#0b5cad', accent: '#ffb400',
     hero_title: 'Dekkskift og dekkhotell i Kroer',
     hero_text: 'Lokalt dekkverksted på Danskerud i Ås. Bestill time på nett – du får svar med en gang.',
+    eyebrow: 'Dekkverksted · Kroer, Ås',
+    hero_image: '/web-bil/hero.webp', hotel_image: '/web-bil/hotell.webp',
+    hotel_title: 'Dekkhotell – vi tar vare på hjulene', hotel_text: 'Hjulene dine vaskes, sjekkes og lagres trygt til neste sesong. Du får beskjed når det er tid for skift.',
+    stats: [{ value: 'Siden 1997', label: 'Registrert foretak' }, { value: P('antall'), label: 'Hjulsett på hotellet' }, { value: '1 min', label: 'Å bestille time' }],
+    reviews: [{ text: P('Kundeomtale 1'), name: P('Navn'), stars: 5 }, { text: P('Kundeomtale 2'), name: P('Navn'), stars: 5 }, { text: P('Kundeomtale 3'), name: P('Navn'), stars: 5 }],
+    rating: P('vurdering, f.eks. 4,8 / 5'),
     badges: ['🛞 Dekkhotell', '🔄 Hjulskift', '📍 Kroer, Ås', '📅 Book på nett'],
     about: 'Web-Bil har drevet dekkhotell og dekkskift ved Danskerud i Kroer siden 1990-tallet. ' + P('Mer om oss – Simon skriver'),
     services: [
@@ -85,11 +91,13 @@ module.exports.routes = function routes(app, { db, aw, limit, adminOnly, notify,
   app.put('/api/dekk/site/:slug', aw((req) => {
     adminOnly(req); const cur = get(req.params.slug); if (!cur) throw err('not found', 404); const b = req.body || {};
     const next = { ...cur }; const str = (v, n = 600) => String(v ?? '').slice(0, n);
-    for (const k of ['name', 'full_name', 'hero_title', 'hero_text', 'about', 'price_note', 'address', 'postal', 'area', 'phone', 'email', 'orgnr', 'directions', 'bot_name', 'bot_hello', 'color', 'accent']) if (k in b) next[k] = str(b[k], k === 'about' ? 2000 : 300);
+    for (const k of ['eyebrow', 'hero_image', 'hotel_image', 'hotel_title', 'hotel_text', 'rating', 'name', 'full_name', 'hero_title', 'hero_text', 'about', 'price_note', 'address', 'postal', 'area', 'phone', 'email', 'orgnr', 'directions', 'bot_name', 'bot_hello', 'color', 'accent']) if (k in b) next[k] = str(b[k], k === 'about' ? 2000 : 300);
     for (const k of ['lat', 'lng']) if (k in b && !isNaN(+b[k])) next[k] = +b[k];
     if (Array.isArray(b.badges)) next.badges = b.badges.map((x) => str(x, 40)).filter(Boolean).slice(0, 8);
     if (Array.isArray(b.services)) next.services = b.services.slice(0, 12).map((x) => ({ icon: str(x.icon, 4), title: str(x.title, 60), text: str(x.text, 300), price: str(x.price, 60) })).filter((x) => x.title);
     if (Array.isArray(b.prices)) next.prices = b.prices.slice(0, 30).map((x) => ({ name: str(x.name, 80), price: str(x.price, 40) })).filter((x) => x.name);
+    if (Array.isArray(b.stats)) next.stats = b.stats.slice(0, 4).map((x) => ({ value: str(x.value, 40), label: str(x.label, 60) })).filter((x) => x.value);
+    if (Array.isArray(b.reviews)) next.reviews = b.reviews.slice(0, 12).map((x) => ({ text: str(x.text, 500), name: str(x.name, 60), stars: Math.max(1, Math.min(5, +x.stars || 5)) })).filter((x) => x.text);
     if (Array.isArray(b.hours)) next.hours = b.hours.slice(0, 10).map((x) => ({ day: str(x.day, 40), time: str(x.time, 60) })).filter((x) => x.day);
     if (Array.isArray(b.faqs)) next.faqs = b.faqs.slice(0, 100).map((x, k) => ({ id: str(x.id || 'f' + Date.now() + k, 30), q: str(x.q, 200), a: str(x.a, 2000), keywords: str(x.keywords, 300) })).filter((x) => x.q);
     save(req.params.slug, next); return next;

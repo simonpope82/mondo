@@ -1,6 +1,8 @@
 // 🌐 Public booking page (#/book or /book) – phone first, 4 big steps, Norwegian.
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/manrope';
 import { Car, CalendarDays, User, CheckCircle2, ChevronLeft, Clock, Wrench } from 'lucide-react';
 
 const STEPS = [['Tjeneste', Wrench], ['Bil', Car], ['Tid', CalendarDays], ['Deg', User]];
@@ -18,12 +20,12 @@ export default function Book() {
   if (!cfg) return <div className="bk-page"><div className="bk-card">{err || 'Laster…'}</div></div>;
   const svc = cfg.services.find((s) => s.id === f.service);
   const adds = (cfg.addons || []).filter((a) => f.addons.includes(a.id)); const total = (svc?.price || 0) + adds.reduce((a, x) => a + (+x.price || 0), 0);
-  const company = brand?.full_name || cfg.company; const style = brand ? { '--bk': brand.color } : {};
+  const company = brand?.full_name || cfg.company; const style = brand ? { '--acc': brand.accent } : {}; const skin = site ? ' bk-w2' : '';
   const toggle = (id) => set({ addons: f.addons.includes(id) ? f.addons.filter((x) => x !== id) : [...f.addons, id], time: '' });
   const ok = [!!svc, f.regnr.replace(/\s/g, '').length >= 2, !!f.time, f.name.trim() && f.phone.replace(/\D/g, '').length >= 8][step];
   const submit = async () => { setBusy(true); setErr(''); try { setDone(await api.post('/book/create', { ...f, site: site || undefined, brand: brand?.full_name })); } catch (e) { setErr(e.message); if (/ledig/.test(e.message)) { setStep(2); set({ time: '' }); api.get(`/book/slots?date=${f.date}&service=${f.service}&addons=${aq}`).then((r) => setSlots(r.slots)); } } setBusy(false); };
   if (done) return (
-    <div className="bk-page" style={style}><div className="bk-card bk-done" data-testid="bk-done">
+    <div className={"bk-page" + skin} style={style}><div className="bk-card bk-done" data-testid="bk-done">
       <CheckCircle2 size={64} color="#00c875" />
       <h1>{done.confirmed ? 'Timen er bekreftet ✅' : 'Takk! Timen er bestilt'}</h1>
       <div className="bk-sum">
@@ -36,7 +38,7 @@ export default function Book() {
     </div></div>
   );
   return (
-    <div className="bk-page" style={style}>
+    <div className={"bk-page" + skin} style={style}>
       <header className="bk-head">{site ? <a className="bk-logo" href={'/' + site}>🛞</a> : <div className="bk-logo">🛞</div>}<div><b>{company}</b><div className="muted">Bestill dekkskift på 1 minutt</div></div></header>
       <div className="bk-steps">{STEPS.map(([t, I], k) => <button key={t} className={'bk-step' + (k === step ? ' on' : k < step ? ' done' : '')} disabled={k > step} onClick={() => setStep(k)}><I size={18} /><span>{t}</span></button>)}</div>
       <div className="bk-card">
