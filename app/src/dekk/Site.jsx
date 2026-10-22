@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/manrope';
 import { api } from '../api.js';
-import { Phone, MapPin, Clock, CalendarCheck, MessageCircle, X, Send, Navigation, Mail, ArrowRight, RefreshCw, Warehouse, CircleDot, Wrench, ShieldCheck, Gauge, Star, Sparkles, Menu } from 'lucide-react';
+import { Phone, MapPin, Clock, CalendarCheck, MessageCircle, X, Send, Navigation, Mail, ArrowRight, RefreshCw, Warehouse, CircleDot, Wrench, ShieldCheck, Gauge, Star, Sparkles, Menu, Home, Trees, Route, HeartHandshake } from 'lucide-react';
 
 const ph = (s) => /\[[^\]]*\]/.test(String(s || ''));
 const Txt = ({ v }) => String(v ?? '').split(/(\[[^\]]*\])/).map((p, k) => (p.startsWith('[') ? <mark key={k} className="w2-ph">{p}</mark> : <React.Fragment key={k}>{p}</React.Fragment>));
@@ -19,7 +19,7 @@ export default function Site({ slug }) {
   const book = `/book?site=${slug}`; const tel = ph(s.phone) ? null : 'tel:' + s.phone.replace(/\s/g, '');
   const maps = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
   const d = 0.006; const osm = `https://www.openstreetmap.org/export/embed.html?bbox=${s.lng - d * 2},${s.lat - d},${s.lng + d * 2},${s.lat + d}&layer=mapnik&marker=${s.lat},${s.lng}`;
-  const nav = [['#tjenester', 'Tjenester'], ['#priser', 'Priser'], ['#dekkhotell', 'Dekkhotell'], ['#kontakt', 'Kontakt']];
+  const nav = [['#tjenester', 'Tjenester'], ['#lokalt', 'Lokalt'], ['#priser', 'Priser'], ['#dekkhotell', 'Dekkhotell'], ['#kontakt', 'Kontakt']];
   return (
     <div className="w2-page" ref={root} onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 30)} style={{ '--acc': s.accent }} data-testid="site-page">
       <a className="w2-skip" href="#main">Hopp til innhold</a>
@@ -32,11 +32,12 @@ export default function Site({ slug }) {
       </header>
       <section className="w2-hero" id="main">
         <picture className="w2-hero-bg"><source media="(max-width: 700px)" srcSet={s.hero_image.replace('hero.webp', 'hero-m.webp')} /><img src={s.hero_image} alt="" fetchpriority="high" /></picture>
+        {s.local_badge && <a href="#lokalt" className="w2-seal" aria-label={s.local_badge}><Trees size={22} /><b>{s.local_badge}</b><span>{s.local_badge_sub}</span></a>}
         <div className="w2-hero-in">
           <span className="w2-eyebrow"><i /> <Txt v={s.eyebrow} /></span>
           <h1><Txt v={s.hero_title} /></h1>
           <p className="w2-lead"><Txt v={s.hero_text} /></p>
-          <div className="w2-cta-row"><a className="w2-btn" href={book} data-testid="site-book"><CalendarCheck size={20} /> Bestill time <ArrowRight size={18} /></a>
+          <div className="w2-cta-row"><a className="w2-btn" href={book} data-testid="site-book"><CalendarCheck size={20} /> Bestill time på Kroer <ArrowRight size={18} /></a>
             <button className="w2-btn ghost" onClick={() => setOpen(true)}><MessageCircle size={20} /> Spør oss</button></div>
           <div className="w2-stats">{(s.stats || []).map((x) => <div key={x.label}><b><Txt v={x.value} /></b><span>{x.label}</span></div>)}</div>
         </div>
@@ -46,6 +47,15 @@ export default function Site({ slug }) {
       <section className="w2-sec" id="tjenester"><div className="w2-head w2-rv"><span className="w2-kicker">Tjenester</span><h2>Alt for hjulene dine</h2></div>
         <div className="w2-grid">{s.services.map((x, k) => { const I = iconFor(x.title); return <a key={x.title} className="w2-card w2-rv" style={{ transitionDelay: k * 70 + 'ms' }} href={book}>
           <span className="w2-ic"><I size={24} /></span><h3>{x.title}</h3><p><Txt v={x.text} /></p><span className="w2-card-f"><span className="w2-price"><Txt v={x.price} /></span><ArrowRight size={18} /></span></a>; })}</div></section>
+
+      {s.local_title && <section className="w2-sec w2-local" id="lokalt" data-testid="site-local">
+        <div className="w2-local-img w2-rv"><img src={s.local_image} alt="Verksted på landet ved skumring" loading="lazy" /><span className="w2-local-tag"><MapPin size={16} /> Kroer, Ås</span></div>
+        <div className="w2-local-txt w2-rv"><span className="w2-kicker">{s.local_kicker}</span><h2>{s.local_title}</h2><p className="w2-lead"><Txt v={s.local_text} /></p>
+          <ul className="w2-lpts">{(s.local_points || []).map((x, k) => { const I = [Route, Home, HeartHandshake][k % 3]; return <li key={x.title}><span className="w2-ic"><I size={20} /></span><div><b>{x.title}</b><p><Txt v={x.text} /></p></div></li>; })}</ul>
+          <div className="w2-radius" aria-label="Steder i nærheten"><div className="w2-rings"><i /><i /><i /><span className="w2-dot" /></div>
+            <div className="w2-chips">{(s.local_places || []).map((x, k) => <span key={x.name} className={'w2-chip' + (k === 0 ? ' on' : '')}><b>{x.name}</b> <Txt v={x.dist} /></span>)}</div></div>
+          <p className="w2-small">{s.local_places_note} Dekk og merker: <Txt v={s.local_supplier} /></p>
+          <a className="w2-btn" href={book} data-testid="site-local-book"><CalendarCheck size={20} /> {s.local_cta} <ArrowRight size={18} /></a></div></section>}
 
       <section className="w2-sec w2-split" id="dekkhotell">
         <div className="w2-img w2-rv"><img src={s.hotel_image} alt="Dekkhotell med hjul i reoler" loading="lazy" /></div>

@@ -15,6 +15,14 @@ const DEFAULTS = {
     stats: [{ value: 'Siden 1997', label: 'Registrert foretak' }, { value: P('antall'), label: 'Hjulsett på hotellet' }, { value: '1 min', label: 'Å bestille time' }],
     reviews: [{ text: P('Kundeomtale 1'), name: P('Navn'), stars: 5 }, { text: P('Kundeomtale 2'), name: P('Navn'), stars: 5 }, { text: P('Kundeomtale 3'), name: P('Navn'), stars: 5 }],
     rating: P('vurdering, f.eks. 4,8 / 5'),
+    local_badge: 'Lokalt verksted på Kroer', local_badge_sub: 'Ås · siden 1997',
+    local_kicker: 'Her i nabolaget', local_title: 'Naboer som hjelper naboer',
+    local_text: 'Vi er et lite verksted på Danskerud i Kroer, og kundene våre er naboene våre. Kort vei hit, kjente fjes og service du kan stole på.',
+    local_points: [{ title: 'Kort kjøretur', text: 'Like ved, uten å måtte inn til byen.' }, { title: 'Dekkene dine blir i Ås', text: 'Dekkhotellet ligger her på verkstedet.' }, { title: 'Støtt lokale bedrifter', text: 'Pengene du bruker her blir i bygda.' }],
+    local_places: [{ name: 'Kroer', dist: 'Her er vi' }, { name: 'Ås sentrum', dist: 'ca. 3 km' }, { name: 'Vestby', dist: 'ca. 7 km' }, { name: 'Ski', dist: 'ca. 8 km' }, { name: 'Nordby', dist: 'ca. 9 km' }, { name: 'Drøbak', dist: 'ca. 12 km' }],
+    local_places_note: 'Avstander er omtrentlige, i luftlinje.',
+    local_supplier: P('dekkmerker/leverandør'),
+    local_image: '/web-bil/lokal.webp', local_cta: 'Bestill time hos naboen',
     badges: ['🛞 Dekkhotell', '🔄 Hjulskift', '📍 Kroer, Ås', '📅 Book på nett'],
     about: 'Web-Bil har drevet dekkhotell og dekkskift ved Danskerud i Kroer siden 1990-tallet. ' + P('Mer om oss – Simon skriver'),
     services: [
@@ -91,11 +99,13 @@ module.exports.routes = function routes(app, { db, aw, limit, adminOnly, notify,
   app.put('/api/dekk/site/:slug', aw((req) => {
     adminOnly(req); const cur = get(req.params.slug); if (!cur) throw err('not found', 404); const b = req.body || {};
     const next = { ...cur }; const str = (v, n = 600) => String(v ?? '').slice(0, n);
-    for (const k of ['eyebrow', 'hero_image', 'hotel_image', 'hotel_title', 'hotel_text', 'rating', 'name', 'full_name', 'hero_title', 'hero_text', 'about', 'price_note', 'address', 'postal', 'area', 'phone', 'email', 'orgnr', 'directions', 'bot_name', 'bot_hello', 'color', 'accent']) if (k in b) next[k] = str(b[k], k === 'about' ? 2000 : 300);
+    for (const k of ['eyebrow', 'hero_image', 'hotel_image', 'hotel_title', 'hotel_text', 'rating', 'local_badge', 'local_badge_sub', 'local_kicker', 'local_title', 'local_text', 'local_places_note', 'local_supplier', 'local_image', 'local_cta', 'name', 'full_name', 'hero_title', 'hero_text', 'about', 'price_note', 'address', 'postal', 'area', 'phone', 'email', 'orgnr', 'directions', 'bot_name', 'bot_hello', 'color', 'accent']) if (k in b) next[k] = str(b[k], k === 'about' ? 2000 : 300);
     for (const k of ['lat', 'lng']) if (k in b && !isNaN(+b[k])) next[k] = +b[k];
     if (Array.isArray(b.badges)) next.badges = b.badges.map((x) => str(x, 40)).filter(Boolean).slice(0, 8);
     if (Array.isArray(b.services)) next.services = b.services.slice(0, 12).map((x) => ({ icon: str(x.icon, 4), title: str(x.title, 60), text: str(x.text, 300), price: str(x.price, 60) })).filter((x) => x.title);
     if (Array.isArray(b.prices)) next.prices = b.prices.slice(0, 30).map((x) => ({ name: str(x.name, 80), price: str(x.price, 40) })).filter((x) => x.name);
+    if (Array.isArray(b.local_points)) next.local_points = b.local_points.slice(0, 6).map((x) => ({ title: str(x.title, 80), text: str(x.text, 200) })).filter((x) => x.title);
+    if (Array.isArray(b.local_places)) next.local_places = b.local_places.slice(0, 10).map((x) => ({ name: str(x.name, 40), dist: str(x.dist, 40) })).filter((x) => x.name);
     if (Array.isArray(b.stats)) next.stats = b.stats.slice(0, 4).map((x) => ({ value: str(x.value, 40), label: str(x.label, 60) })).filter((x) => x.value);
     if (Array.isArray(b.reviews)) next.reviews = b.reviews.slice(0, 12).map((x) => ({ text: str(x.text, 500), name: str(x.name, 60), stars: Math.max(1, Math.min(5, +x.stars || 5)) })).filter((x) => x.text);
     if (Array.isArray(b.hours)) next.hours = b.hours.slice(0, 10).map((x) => ({ day: str(x.day, 40), time: str(x.time, 60) })).filter((x) => x.day);

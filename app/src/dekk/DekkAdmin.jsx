@@ -132,6 +132,9 @@ function SiteEdit({ admin, setMsg }) {
       <F k="lat" t="Kart: breddegrad" /><F k="lng" t="Kart: lengdegrad" /><F k="accent" t="Aksentfarge (hex)" /><F k="bot_name" t="Chat-navn" /><F k="bot_hello" t="Chat-hilsen" area />
     </div></div>
     <div className="dk-box"><h3>🔧 Tjenester på siden</h3><List k="services" fields={[['icon', 50], ['title', 160], ['text'], ['price', 140]]} add={() => ({ icon: '🔧', title: 'Ny tjeneste', text: '', price: '[pris – fylles inn]' })} /></div>
+    <div className="dk-box"><h3>🌲 Lokalt</h3><F k="local_badge" t="Merke i toppen" /><F k="local_badge_sub" t="Merke: liten tekst" /><F k="local_kicker" t="Lokalt: liten tittel" /><F k="local_title" t="Lokalt: overskrift" /><F k="local_text" t="Lokalt: tekst" area /><F k="local_image" t="Lokalt: bilde (URL)" /><F k="local_cta" t="Lokalt: knappetekst" /><F k="local_places_note" t="Merknad om avstander" /><F k="local_supplier" t="Leverandør/merker (kun hvis sant)" />
+      <List k="local_points" fields={[['title', 200], ['text']]} add={() => ({ title: 'Ny', text: '' })} />
+      <List k="local_places" fields={[['name', 180], ['dist', 140]]} add={() => ({ name: 'Sted', dist: '[ca. km]' })} /></div>
     <div className="dk-box"><h3>📊 Tall under overskriften</h3><List k="stats" fields={[['value', 200], ['label']]} add={() => ({ value: '[tall]', label: 'Tekst' })} /></div>
     <div className="dk-box"><h3>⭐ Kundeomtaler</h3><List k="reviews" fields={[['text'], ['name', 180], ['stars', 70]]} add={() => ({ text: '[Kundeomtale – fylles inn]', name: '[Navn]', stars: 5 })} /></div>
     <div className="dk-box"><h3>💰 Prisliste</h3><List k="prices" fields={[['name'], ['price', 180]]} add={() => ({ name: 'Ny pris', price: '[kr – fylles inn]' })} /></div>

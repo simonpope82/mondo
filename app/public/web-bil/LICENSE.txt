@@ -1,3 +1,4 @@
 hero.webp, hero-m.webp, hotell.webp: AI-generated illustrative images made with Grok Bot's image generator for this project (21 Oct 2026).
 No third-party photos, people, brands or logos. Free to use in this repo. Replace with real photos of the workshop when they are available.
 Fonts: Inter Variable + Manrope Variable via @fontsource (SIL Open Font License 1.1), self-hosted in the build.
+- lokal.webp: AI-generated (GenerateImage), no real people or places.
