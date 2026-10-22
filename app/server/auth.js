@@ -65,7 +65,7 @@ function setup(db) {
     return { id, email, name, role, person_id };
   }
 
-  const PUBLIC = (req) => req.path === '/api/auth/login' || req.path === '/api/health' || req.path === '/api/push/key' || req.path.startsWith('/api/forms/') || req.path.startsWith('/api/scan/') || req.path.startsWith('/api/book/') || req.path.startsWith('/api/pay/') || req.path.startsWith('/api/site/') || req.path.startsWith('/api/mail/inbound/') || req.path.startsWith('/api/portal/');
+  const PUBLIC = (req) => req.path === '/api/auth/login' || req.path === '/api/auth/forgot' || req.path === '/api/auth/reset' || req.path === '/api/auth/reset/check' || req.path === '/api/health' || req.path === '/api/push/key' || req.path.startsWith('/api/forms/') || req.path.startsWith('/api/scan/') || req.path.startsWith('/api/book/') || req.path.startsWith('/api/pay/') || req.path.startsWith('/api/site/') || req.path.startsWith('/api/mail/inbound/') || req.path.startsWith('/api/portal/');
   function middleware(req, res, next) {
     if (!req.path.startsWith('/api')) return next();
     // CSRF guard: state-changing API calls must be JSON (cross-site forms can't send that without CORS)

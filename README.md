@@ -140,3 +140,10 @@ Workspace **Dekkhotell** with editable template boards (also available under *Ne
 - Påminnelse: standard 1. september (Oppsett → «Påminnelse om nye dekk», merket «må avklares»), egen dato per kunde i kolonnen «Påminnelse nye dekk (egen dato)». Varsel til verkstedet + web push til kunden (kun med Min side + varsler på). SMS/e-post bare som utkast.
 - Kunder: «Notat til kunde (synlig)» vises for kunden; «Notat» er internt og vises aldri.
 - Test: `node tests/dekk-wear.mjs <url>` (skjermbilder v4-*).
+
+## 🔑 Glemt passord (server/reset.js)
+- «Glemt passord? / Forgot password?» on the staff login and on Min side. Neutral answer, rate-limited (3 per account / 10 per IP per 15 min).
+- Single-use token, stored only as sha256, valid 30 min (admin-made links: 30 min – 2 h). `/reset?token=…` sets a new password (8+) and logs the account out everywhere.
+- Delivery: e-mail via SMTP if `SMTP_HOST`, `SMTP_PORT` (587/465), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` are set. Otherwise logged + saved as draft in Utboks, and the admin can copy the link on the Users page. SMS: no provider yet → draft.
+- Links use `PUBLIC_URL` (or Render's `RENDER_EXTERNAL_URL`), not the request Host header.
+- Test: `node tests/reset.mjs <url>` (throwaway user, cleaned up).

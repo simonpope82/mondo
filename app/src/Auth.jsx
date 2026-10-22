@@ -5,7 +5,8 @@ import { Mail, Lock, LogIn, Eye, EyeOff, Plus, KeyRound, Trash2, Shield, User, C
 
 export function Login({ onLogin }) {
   const [email, setEmail] = useState(''); const [pw, setPw] = useState(''); const [show, setShow] = useState(false);
-  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [forgot, setForgot] = useState(false); const [sent, setSent] = useState('');
+  const ask = async (e) => { e.preventDefault(); setErr(''); setBusy(true); try { setSent((await api.post('/auth/forgot', { email })).message); } catch (x) { setErr(x.message); } setBusy(false); };
   const go = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true);
     try { const r = await api.post('/auth/login', { email, password: pw }); onLogin(r.user); }
@@ -15,6 +16,15 @@ export function Login({ onLogin }) {
     <div className="login-page">
       <div className="login-left">
         <a className="brand big"><span className="logo"><i style={{ background: '#e2445c' }} /><i style={{ background: '#fdab3d' }} /><i style={{ background: '#00c875' }} /></span><b>mondo</b></a>
+        {forgot ? <form className="login-card" onSubmit={ask} data-testid="forgot-form">
+          <h1>Forgot password? 🔑</h1><p className="muted">Glemt passord? Write your email and we send you a link.</p>
+          <label className="mini-label">Email</label>
+          <div className="login-field"><Mail size={18} /><input type="email" autoComplete="username" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@mail.com" data-testid="forgot-email" /></div>
+          {sent && <div className="login-ok" data-testid="forgot-sent">✅ {sent}</div>}
+          {err && <div className="login-err">⚠️ {err}</div>}
+          {!sent && <button className="btn primary big full" disabled={busy || !email} data-testid="forgot-submit"><Mail size={18} /> {busy ? 'Sending…' : 'Send reset link'}</button>}
+          <button type="button" className="btn ghost full" onClick={() => { setForgot(false); setSent(''); setErr(''); }}>← Back to login</button>
+        </form> :
         <form className="login-card" onSubmit={go}>
           <h1>Welcome back 👋</h1>
           <p className="muted">Log in to your work.</p>
@@ -23,10 +33,11 @@ export function Login({ onLogin }) {
           <label className="mini-label">Password</label>
           <div className="login-field"><Lock size={18} /><input type={show ? 'text' : 'password'} autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Password" data-testid="login-password" />
             <button type="button" className="icon-btn" onClick={() => setShow(!show)} title={show ? 'Hide' : 'Show'}>{show ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+          <button type="button" className="link-btn forgot-link" onClick={() => { setForgot(true); setErr(''); }} data-testid="forgot-link">Glemt passord? / Forgot password?</button>
           {err && <div className="login-err" data-testid="login-error">⚠️ {err}</div>}
           <button className="btn primary big full" disabled={busy || !email || !pw} data-testid="login-submit"><LogIn size={18} /> {busy ? 'Logging in…' : 'Log in'}</button>
           <p className="muted small center">No account? Ask your admin.</p>
-        </form>
+        </form>}
       </div>
       <div className="login-right">
         <div className="login-art">
@@ -60,6 +71,9 @@ export function UsersPage({ ctx, me }) {
   const load = () => api.get('/users').then(setUsers);
   useEffect(() => { load(); }, []);
   const P = (u) => ctx.people.find((p) => p.id === u.person_id) || { name: u.name, color: '#579bfc' };
+  const [link, setLink] = useState(null); const [drafts, setDrafts] = useState([]);
+  useEffect(() => { api.get('/users/reset-drafts').then(setDrafts).catch(() => {}); }, []);
+  const mkLink = async (u) => setLink(await api.post('/users/' + u.id + '/reset-link', { hours: 0.5 }));
   const reset = async (u) => { const { password } = await api.get('/users/suggest-password'); await api.patch('/users/' + u.id, { password }); setShown({ email: u.email, password }); };
   return (
     <div className="home">
@@ -74,11 +88,16 @@ export function UsersPage({ ctx, me }) {
             {u.id !== me.id && <>
               <button className="btn small" onClick={async () => { await api.patch('/users/' + u.id, { role: u.role === 'admin' ? 'member' : 'admin' }); load(); }}>{u.role === 'admin' ? 'Make asset manager' : 'Make group admin'}</button>
               <button className="btn small" onClick={() => reset(u)}><KeyRound size={13} /> New password</button>
+              <button className="btn small" onClick={() => mkLink(u)} data-testid="user-reset-link">🔗 Reset link</button>
               <button className="icon-btn" onClick={async () => { if (await dialog.confirm(`Remove ${u.name}?`)) { await api.del('/users/' + u.id); load(); } }}><Trash2 size={16} /></button>
             </>}
           </div>
         ))}
       </div>
+      {drafts.length > 0 && <div className="home-card" style={{ marginTop: 20 }} data-testid="reset-drafts"><h3>🔑 Reset links not sent (no SMTP) – last 2 hours</h3><p className="muted small">Copy and give the link to the person yourself. Each link works once, for 30 minutes.</p>
+        {drafts.map((d) => <div key={d.id} className="user-row"><div className="grow"><b>{d.to_addr}</b><div className="muted small">{new Date(d.created).toLocaleString('nb-NO')} · {d.status}</div></div>{d.link && <button className="btn small" onClick={() => navigator.clipboard?.writeText(d.link)}><Copy size={13} /> Copy link</button>}</div>)}</div>}
+      {link && <Modal onClose={() => setLink(null)} width={520}><h2 className="modal-title">🔗 Reset link for {link.email}</h2><p className="muted">Works once, until {new Date(link.expires).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' })}. Shown only now.</p>
+        <div className="pw-box small-link" data-testid="reset-link-box">{link.link}</div><div className="modal-actions"><button className="btn" onClick={() => navigator.clipboard?.writeText(link.link)}><Copy size={15} /> Copy</button><button className="btn primary" onClick={() => setLink(null)}>Done</button></div></Modal>}
       {add && <AddUser onClose={() => setAdd(false)} onDone={async (r) => { setAdd(false); setShown(r); await ctx.reload(); load(); }} />}
       {shown && <Modal onClose={() => setShown(null)} width={460}>
         <h2 className="modal-title">🔑 Login for {shown.email}</h2>

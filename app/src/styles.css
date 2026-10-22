@@ -983,3 +983,12 @@ a { color: var(--primary); text-decoration: none; }
 .dl-choice{margin-top:4px;font-weight:600;color:#c4223a}
 .dk-msg.warn{background:#fff0d9;color:#8a5200;border-radius:10px;padding:10px 12px;margin:8px 0}
 .tn-notice svg{flex-shrink:0;width:20px;height:20px;color:#0073ea}
+/* forgot / reset password */
+.link-btn.forgot-link{display:block;margin:-4px 0 12px auto;background:none;border:0;color:#0073ea;font-size:14px;cursor:pointer;padding:4px 0}
+.link-btn.forgot-link:hover{text-decoration:underline}
+.login-ok{background:#e6f9ef;color:#00754a;border-radius:10px;padding:12px;margin:10px 0;font-size:15px;line-height:1.4}
+.btn.ghost.full{width:100%;margin-top:8px;justify-content:center}
+.reset-page .login-left{width:100%}.reset-page h1{display:flex;gap:8px;align-items:center}
+.pw-box.small-link{font-size:13px;word-break:break-all}
+.pt-forgot{background:none;border:0;color:#0073ea;font-size:15px;padding:10px 0;cursor:pointer;text-decoration:underline}
+.pt-fg{padding:10px 0}

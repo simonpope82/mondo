@@ -5,6 +5,7 @@ import { PrevNote, TyreChoice } from './TyreNote.jsx';
 const j = async (m, u, b) => { const r = await fetch('/api' + u, { method: m, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }); const x = await r.json().catch(() => ({})); if (!r.ok) throw new Error(x.error || r.status); return x; };
 const LV = { Ja: '🔴 Bør byttes', Snart: '🟠 Snart', OK: '🟢 OK' };
 export default function Portal() {
+  const [fg, setFg] = useState(false); const [fgMsg, setFgMsg] = useState('');
   const [me, setMe] = useState(undefined); const [f, setF] = useState({ login: '', password: '' }); const [err, setErr] = useState('');
   const [prev, setPrev] = useState(null); const [pick, setPick] = useState(''); const [saved, setSaved] = useState(''); const [pmsg, setPmsg] = useState('');
   const load = () => j('GET', '/portal/me').then((m) => { setMe(m); j('GET', '/portal/prev').then(setPrev).catch(() => {}); }).catch(() => setMe(null));
@@ -26,7 +27,9 @@ export default function Portal() {
     <form className="bk-card" onSubmit={async (e) => { e.preventDefault(); setErr(''); try { await j('POST', '/portal/login', f); load(); } catch (x) { setErr(x.message); } }} data-testid="portal-login">
       <label className="bk-label">Mobil eller e-post</label><input className="bk-in" data-testid="portal-user" value={f.login} onChange={(e) => setF({ ...f, login: e.target.value })} autoComplete="username" />
       <label className="bk-label">Passord</label><input className="bk-in" type="password" data-testid="portal-pass" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} autoComplete="current-password" />
-      {err && <div className="bk-err">{err}</div>}<div className="bk-nav"><button className="bk-btn" data-testid="portal-submit">Logg inn</button></div><p className="muted bk-small">Har du ikke passord? Spør verkstedet.</p></form></div>;
+      {err && <div className="bk-err">{err}</div>}<div className="bk-nav"><button className="bk-btn" data-testid="portal-submit">Logg inn</button></div><button type="button" className="pt-forgot" onClick={() => setFg(true)} data-testid="portal-forgot-link">Glemt passord?</button>
+      {fg && <div className="pt-fg" data-testid="portal-forgot">{fgMsg ? <p data-testid="portal-forgot-sent">✅ {fgMsg}</p> : <><p className="muted">Skriv mobil eller e-post over, så sender vi en lenke.</p><button type="button" className="bk-btn" data-testid="portal-forgot-submit" disabled={!f.login} onClick={async () => { try { setFgMsg((await j('POST', '/portal/forgot', { login: f.login })).message); } catch (x) { setErr(x.message); } }}>Send lenke</button></>}</div>}
+      <p className="muted bk-small">Har du ikke passord? Spør verkstedet.</p></form></div>;
   const up = me.bookings.filter((b) => b.date >= new Date().toISOString().slice(0, 10));
   return <div className="bk-page" data-testid="portal">
     <header className="bk-head"><div className="bk-logo">🛞</div><div style={{ flex: 1 }}><b>Hei, {me.name.split(' ')[0]}!</b><div className="muted">{me.company}</div></div><button className="bk-back" onClick={async () => { await j('POST', '/portal/logout'); setMe(null); }}><LogOut size={18} /></button></header>

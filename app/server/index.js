@@ -100,6 +100,7 @@ app.use((req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff')
 app.use(express.json({ limit: '5mb' }));
 app.use(A.middleware);
 A.routes(app);
+require('./reset').setup(db).routes(app, (req, res, next) => (req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'admin only' })));
 const PUSH = require('./push').setup(db, DATA_DIR); PUSH.routes(app, me);
 require('./geo').setup(db).routes(app);
 const wrap = (fn) => (req, res) => { try { const r = fn(req, res); if (r !== undefined) res.json(r); } catch (e) { console.error(e); res.status(500).json({ error: e.message }); } };
