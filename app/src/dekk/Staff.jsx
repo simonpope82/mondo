@@ -1,18 +1,53 @@
 // 🛞 Staff pages: tyre set (QR target), daily overview, customers (LTV + tyre advice + customer login), tyre-set labels.
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../api.js';
-import { Phone, Printer, CalendarDays, Car, User, MapPin, Check, KeyRound, ExternalLink } from 'lucide-react';
+import { Phone, Printer, CalendarDays, Car, User, MapPin, Check, KeyRound, ExternalLink, Ruler, AlertTriangle, Bell, X } from 'lucide-react';
 
 const LV = { Ja: ['🔴', 'Bør bestille nye dekk'], Snart: ['🟠', 'Snart nye dekk'], OK: ['🟢', 'Dekkene er OK'] };
 const kr = (n) => (+n || 0).toLocaleString('nb-NO', { maximumFractionDigits: 0 }) + ' kr';
 const printUrl = (ids) => '/api/dekk/tyreset-labels.pdf?ids=' + ids.join(',');
 
+// 📏 "Gamle dekk tatt av" – register tread depth; pop-up if below the limit
+export function WearModal({ set, onClose, onDone }) {
+  const [d, setD] = useState(['', '', '', '']); const [res, setRes] = useState(null); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const save = async () => { setBusy(true); setErr(''); try { const r = await api.post('/dekk/wear/register', { set_id: set.id, depths: d }); setRes(r); onDone && onDone(r); } catch (e) { setErr(e.message); } setBusy(false); };
+  return createPortal(<div className="wm-back" onClick={onClose}><div className="wm" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} data-testid="wear-modal">
+    <button className="wm-x" onClick={onClose} aria-label="Lukk"><X size={20} /></button>
+    {!res && <><h3><Ruler size={22} /> Gamle dekk tatt av</h3><p className="muted">{set.season} {set.dim} – skriv mønsterdybde (mm)</p>
+      <div className="wm-wheels">{['VF', 'HF', 'VB', 'HB'].map((w, k) => <label key={w}><small>{w}</small><input inputMode="decimal" data-testid={'wm-' + w} value={d[k]} onChange={(e) => setD(d.map((x, i) => (i === k ? e.target.value : x)))} placeholder="mm" /></label>)}</div>
+      {err && <div className="dk-msg err">{err}</div>}<button className="dk-save wm-go" disabled={busy || d.some((x) => !x)} onClick={save} data-testid="wm-save"><Check size={18} /> Lagre</button></>}
+    {res && res.popup && <div className="wm-alert" data-testid="wear-alert"><AlertTriangle size={54} /><h2>{res.text}</h2><p><b>{res.customer}</b> · {res.season} · {String(res.min).replace('.', ',')} mm</p>
+      <ul><li>🚩 Oppgave «Bestill nye dekk» lagt på kunden</li><li>🔔 Varsel sendt til verkstedet</li><li>📅 Påminnelse til kunden {res.reminder}</li></ul><button className="dk-save" onClick={onClose}>Skjønner</button></div>}
+    {res && !res.popup && <div className={'wm-ok lv-' + res.level} data-testid="wear-ok"><h2>{res.level === 'Snart' ? '🟠 Nær grensen' : '🟢 Dekkene er OK'}</h2><p>{res.why.join(', ') || String(res.min).replace('.', ',') + ' mm'}</p>{res.reminder && <p>📅 Påminnelse {res.reminder}</p>}<button className="dk-save" onClick={onClose}>OK</button></div>}
+  </div></div>, document.body);
+}
+
+export function WearSettings({ admin, setMsg }) {
+  const [c, setC] = useState(null); useEffect(() => { api.get('/dekk/wear/settings').then(setC); }, []);
+  if (!c) return null; const r = c.reminder; const T = c.texts; const up = (p) => setC({ ...c, reminder: { ...r, ...p } }); const ut = (k, v) => setC({ ...c, texts: { ...T, [k]: v } });
+  const save = async () => { const x = await api.put('/dekk/wear/settings', { reminder: c.reminder, texts: c.texts }); setC({ ...c, ...x }); setMsg && setMsg('✅ Lagret'); };
+  const run = async () => { const x = await api.post('/dekk/wear/run-reminders', {}); setMsg && setMsg(`🔔 ${x.sent} påminnelser sendt`); };
+  const TX = [['prev_title', 'Overskrift på notat'], ['worn_line', 'Linje ved slitte dekk'], ['worn_detail', 'Slitte dekk – detalj'], ['choice_yes', 'Valg: ja'], ['choice_offer', 'Valg: tilbud'], ['choice_no', 'Valg: nei'], ['generic_q', 'Spørsmål til nye kunder'], ['generic_yes', 'Nye kunder: ja'], ['generic_no', 'Nye kunder: nei'], ['staff_popup', 'Pop-up til verkstedet'], ['remind_staff', 'Påminnelse til verkstedet'], ['remind_customer', 'Påminnelse til kunden (push / SMS-utkast)']];
+  return <div className="dk-box" data-testid="wear-settings"><h3><Bell size={18} /> Påminnelse om nye dekk</h3>
+    {!r.decided && <div className="dk-msg warn" data-testid="wear-undecided">⚠️ Må avklares med Simon: hvilken måned/dag påminnelsen skal gå ut. Nå: {r.day}. {c.months[r.month - 1]}.</div>}
+    <label className="dk-check"><input type="checkbox" checked={r.on} disabled={!admin} onChange={(e) => up({ on: e.target.checked })} /> Send påminnelse automatisk</label>
+    <div className="wm-row"><label>Måned<select value={r.month} disabled={!admin} onChange={(e) => up({ month: +e.target.value })} data-testid="wear-month">{c.months.map((m, k) => <option key={m} value={k + 1}>{m}</option>)}</select></label>
+      <label>Dag<input type="number" min="1" max="28" value={r.day} disabled={!admin} onChange={(e) => up({ day: +e.target.value })} /></label>
+      <label className="dk-check"><input type="checkbox" checked={r.decided} disabled={!admin} onChange={(e) => up({ decided: e.target.checked })} /> Bestemt</label></div>
+    <p className="muted">Neste standard-dato: <b>{c.next_default}</b>. Egen dato per kunde: kolonnen «Påminnelse nye dekk (egen dato)» på Kunder (f.eks. 15.08 eller 2027-08-15).</p>
+    <p className="muted">Hva skjer: varsel til verkstedet · push til kunden hvis Min side + varsler er på · SMS/e-post legges bare som utkast i Utboks.</p>
+    <details><summary>✏️ Tekster</summary>{TX.map(([k, t]) => <label key={k} className="wm-tx"><small>{t}</small><input className="dk-in" value={T[k]} disabled={!admin} onChange={(e) => ut(k, e.target.value)} /></label>)}</details>
+    {admin && <div className="wm-row"><button className="dk-save" onClick={save} data-testid="wear-save">Lagre</button><button className="dk-btn" onClick={run} data-testid="wear-run">🔔 Kjør påminnelser nå</button></div>}</div>;
+}
+
 export function TyreSet({ code }) {
-  const [d, setD] = useState(null); const [err, setErr] = useState('');
+  const [d, setD] = useState(null); const [err, setErr] = useState(''); const [wear, setWear] = useState(false);
   useEffect(() => { api.get('/dekk/tyreset/' + encodeURIComponent(code)).then(setD).catch((e) => setErr(e.message)); }, [code]);
   if (err) return <div className="dk-box">{err}</div>; if (!d) return <div className="dk-box">Laster…</div>;
   const s = d.set, c = d.customer, v = d.vehicle;
-  return <div className="ts-page" data-testid="tyreset">
+  return <div className="ts-page" data-testid="tyreset">{wear && <WearModal set={s} onClose={() => { setWear(false); api.get('/dekk/tyreset/' + encodeURIComponent(code)).then(setD); }} />}
+    <button className="dk-save ts-wear" onClick={() => setWear(true)} data-testid="ts-wear"><Ruler size={20} /> Gamle dekk tatt av – registrer mønster</button>
     <div className="ts-loc"><MapPin size={26} /><div><small>Lagerplass</small><b data-testid="ts-location">{s.location || '—'}</b></div><span className="code-pill">{s.code}</span></div>
     {c && <div className="dk-box ts-cust"><div className="ts-h"><User size={22} /><b data-testid="ts-customer">{c.name}</b><span className="muted">{c.nr}</span></div>
       {c.phone && <a className="ts-call" href={'tel:' + c.phone.replace(/\s/g, '')}><Phone size={20} /> {c.phone}</a>}
@@ -30,17 +65,19 @@ export function TyreSet({ code }) {
 }
 
 export function Daily() {
-  const [d, setD] = useState(null); const load = () => api.get('/dekk/daily').then(setD); useEffect(() => { load(); }, []);
+  const [d, setD] = useState(null); const [wear, setWear] = useState(null); const load = () => api.get('/dekk/daily').then(setD); useEffect(() => { load(); }, []);
   if (!d) return <div className="dk-box">Laster…</div>;
   const toggle = async (x) => { await api.post(`/dekk/daily/${x.id}/fetched`, { on: !x.fetched }); load(); };
-  return <div data-testid="daily">{d.days.map((day) => <div key={day.date} className="dk-box"><h3>{day.label === 'I dag' ? '🗓️' : '➡️'} {day.label} – {day.text} <span className="dk-st">{day.list.length} kunder</span></h3>
+  return <div data-testid="daily">{wear && <WearModal set={wear} onClose={() => { setWear(null); load(); }} />}{d.days.map((day) => <div key={day.date} className="dk-box"><h3>{day.label === 'I dag' ? '🗓️' : '➡️'} {day.label} – {day.text} <span className="dk-st">{day.list.length} kunder</span></h3>
     {(() => { const locs = day.list.flatMap((x) => x.sets.map((s) => s.location)).filter(Boolean); return locs.length > 0 && <div className="dl-fetch">🛞 Hent frem: {locs.map((l) => <b key={l}>{l}</b>)}</div>; })()}
     {day.list.map((x) => <div key={x.id} className={'dl-row' + (x.fetched ? ' done' : '')} data-testid="daily-row">
       <div className="dl-time">{x.time}<small>{x.lift}</small></div>
       <div className="dl-main"><b>{x.customer || x.name}</b> <span className="muted">{x.regnr}</span><div>🔧 {x.service}{x.addons && <span className="dl-add"> ➕ {x.addons}</span>}</div>
         {x.sets.map((s) => <a key={s.id} className={'dl-set lv-' + s.level} href={'#/dekk/hjulsett/' + s.code}><MapPin size={14} /> <b>{s.location}</b> {s.season} {s.dim}{s.level !== 'OK' && ' ⚠️ ' + s.why.join(', ')}</a>)}
-        {!x.sets.length && <div className="muted">Ingen hjul på lager</div>}</div>
+        {!x.sets.length && <div className="muted">Ingen hjul på lager</div>}
+        {x.tyre_choice && <div className="dl-choice" data-testid="daily-choice">🛞 Kunden: «{x.tyre_choice}»</div>}</div>
       <div className="dl-act">{x.phone && <a className="dk-btn" href={'tel:' + x.phone.replace(/\s/g, '')}><Phone size={16} /></a>}
+        {x.oncar?.length > 0 && <button className="dk-btn" onClick={() => setWear(x.oncar[0])} data-testid="daily-wear" title="Gamle dekk tatt av"><Ruler size={16} /> Tatt av</button>}
         {x.sets.length > 0 && <button className={'dk-btn' + (x.fetched ? ' on' : '')} onClick={() => toggle(x)} data-testid="daily-fetched"><Check size={16} /> {x.fetched ? 'Hentet' : 'Hent'}</button>}</div>
     </div>)}{!day.list.length && <div className="muted">Ingen kunder</div>}</div>)}
     <p className="muted">🔔 Morgenvarsel kl {String(d.daily.hour).padStart(2, '0')}:00 {d.daily.push ? 'er på' : 'er av'} (endres under Oppsett).</p></div>;

@@ -1,6 +1,7 @@
 // 🌐 Public booking page (#/book or /book) – phone first, 4 big steps, Norwegian.
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { PrevNote, TyreChoice } from './TyreNote.jsx';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/manrope';
 import { Car, CalendarDays, User, CheckCircle2, ChevronLeft, Clock, Wrench } from 'lucide-react';
@@ -9,11 +10,13 @@ const STEPS = [['Tjeneste', Wrench], ['Bil', Car], ['Tid', CalendarDays], ['Deg'
 export default function Book() {
   const [cfg, setCfg] = useState(null); const [step, setStep] = useState(0); const [err, setErr] = useState('');
   const site = new URLSearchParams(window.location.hash.split('?')[1] || '').get('site'); const [brand, setBrand] = useState(null);
-  const [f, setF] = useState({ addons: [], service: '', regnr: '', date: '', time: '', name: '', phone: '', email: '', comment: '', consent: true });
+  const [f, setF] = useState({ addons: [], service: '', regnr: '', date: '', time: '', name: '', phone: '', email: '', comment: '', consent: true, tyre_choice: '' });
+  const [prev, setPrev] = useState(null); const [saved, setSaved] = useState('');
   const [car, setCar] = useState(null); const [days, setDays] = useState([]); const [slots, setSlots] = useState(null); const [done, setDone] = useState(null); const [busy, setBusy] = useState(false);
   const set = (p) => setF((x) => ({ ...x, ...p }));
   useEffect(() => { document.title = 'Bestill time'; api.get('/book/config').then(setCfg).catch((e) => setErr(e.message)); if (site) api.get('/site/' + site).then((b) => { setBrand(b); document.title = 'Bestill time – ' + b.name; }).catch(() => {}); }, []);
   const aq = f.addons.join(',');
+  useEffect(() => { const p = f.phone.replace(/\D/g, ''); if (step !== 3 || p.length < 8) { setPrev(null); return; } const t = setTimeout(() => api.get(`/book/prev?phone=${encodeURIComponent(f.phone)}&regnr=${encodeURIComponent(f.regnr)}`).then(setPrev).catch(() => {}), 350); return () => clearTimeout(t); }, [step, f.phone, f.regnr]);
   useEffect(() => { if (step === 2 && f.service) api.get(`/book/days?service=${f.service}&addons=${aq}`).then((r) => { setDays(r.days); const first = r.days.find((d) => d.free > 0); if (!f.date && first) set({ date: first.date }); }); }, [step, f.service, aq]);
   useEffect(() => { if (f.date && f.service) { setSlots(null); api.get(`/book/slots?date=${f.date}&service=${f.service}&addons=${aq}`).then((r) => setSlots(r.slots)); } }, [f.date, f.service, aq]);
   useEffect(() => { const r = f.regnr.replace(/\s/g, ''); setCar(null); if (r.length < 6) return; const t = setTimeout(() => api.get('/book/regnr/' + encodeURIComponent(r)).then(setCar).catch(() => {}), 350); return () => clearTimeout(t); }, [f.regnr]);
@@ -32,9 +35,10 @@ export default function Book() {
         <div><Wrench size={20} /> {done.service}</div><div><CalendarDays size={20} /> {done.date_text}</div><div><Clock size={20} /> kl {done.time} ({done.minutes} min)</div><div><Car size={20} /> {done.regnr}</div>
         {done.addons?.length > 0 && <div>➕ {done.addons.join(', ')}</div>}<div className="bk-price">Pris ca. {done.price} kr</div>
       </div>
+      {done.tyre_prompt && <TyreChoice worn={done.tyre_prompt.worn} texts={done.tyre_prompt.texts} value={f.tyre_choice} saved={saved || done.tyre_choice} onChoose={async (k) => { set({ tyre_choice: k }); try { const r = await api.post('/book/tyre-choice', { ref: done.ref, phone: f.phone, choice: k }); setSaved(r.text); } catch (e) { setErr(e.message); } }} />}
       <p>Bookingnummer <b data-testid="bk-ref">{done.ref}</b>. {done.confirmed ? 'Velkommen! Du trenger ikke gjøre mer.' : `Vi sender bekreftelse på SMS${f.email ? ' og e-post' : ''} når timen er godkjent.`}</p>
       <p className="muted">Husk låsebolt hvis bilen har det. Betal med Vipps, kort eller på stedet.</p>
-      <button className="bk-btn" onClick={() => { setDone(null); setStep(0); set({ time: '', service: '', addons: [] }); }}>Bestill en time til</button>{site && <a className="bk-back" href={'/' + site}>← Tilbake til {brand?.name || 'forsiden'}</a>}
+      <button className="bk-btn" onClick={() => { setDone(null); setSaved(''); setStep(0); set({ time: '', service: '', addons: [], tyre_choice: '' }); }}>Bestill en time til</button>{site && <a className="bk-back" href={'/' + site}>← Tilbake til {brand?.name || 'forsiden'}</a>}
     </div></div>
   );
   return (
@@ -67,6 +71,8 @@ export default function Book() {
           <h2>Hvem er du?</h2>
           <label className="bk-label">Navn</label><input className="bk-in" data-testid="bk-name" value={f.name} onChange={(e) => set({ name: e.target.value })} autoComplete="name" />
           <label className="bk-label">Mobil</label><input className="bk-in" data-testid="bk-phone" value={f.phone} onChange={(e) => set({ phone: e.target.value })} inputMode="tel" autoComplete="tel" placeholder="400 00 000" />
+          <PrevNote info={prev} />
+          {prev?.worn && <TyreChoice worn={prev.worn} texts={prev.texts} value={f.tyre_choice} onChoose={(k) => set({ tyre_choice: k })} />}
           <label className="bk-label">E-post (valgfritt)</label><input className="bk-in" data-testid="bk-email" value={f.email} onChange={(e) => set({ email: e.target.value })} inputMode="email" autoComplete="email" />
           <label className="bk-label">Melding (valgfritt)</label><textarea className="bk-in" value={f.comment} onChange={(e) => set({ comment: e.target.value })} rows={2} placeholder="F.eks. låsebolt ligger i hanskerommet" />
           <label className="bk-check"><input type="checkbox" checked={f.consent} onChange={(e) => set({ consent: e.target.checked })} /> Send meg SMS om timen og når hjulene skal byttes</label>

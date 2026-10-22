@@ -1,7 +1,7 @@
 // 🛞 Dekkhotell control page (#/dekk): boards, booking link + QR, settings (company / services / capacity), invoices, outbox, integrations.
 import React, { useEffect, useState } from 'react';
 import { api } from '../api.js';
-import { TyreSet, Daily, Customers, TyreLabels, Rules } from './Staff.jsx';
+import { TyreSet, Daily, Customers, TyreLabels, Rules, WearSettings } from './Staff.jsx';
 import { CalendarDays, Users, Car, Warehouse, Receipt, Settings, Mail, Plug, Link2, FileText, Send, CreditCard, Check, Plus, Trash2, ExternalLink, Globe, Inbox, Printer } from 'lucide-react';
 
 const BOARDS = [['bookinger', 'Bookinger', CalendarDays, '#579bfc'], ['kunder', 'Kunder', Users, '#00c875'], ['kjoretoy', 'Kjøretøy', Car, '#fdab3d'], ['lager', 'Dekkhotell lager', Warehouse, '#784bd1'], ['faktura', 'Fakturaer', Receipt, '#ff6d3b']];
@@ -52,7 +52,7 @@ export default function DekkAdmin({ hash, user }) {
       {tab === 'etiketter' && <TyreLabels boards={s.boards} />}
       {tab === 'epost' && <MailIn admin={user?.role === 'admin'} setMsg={setMsg} />}
       {tab === 'nettside' && <SiteEdit admin={user?.role === 'admin'} setMsg={setMsg} />}
-      {tab === 'oppsett' && <><Setup s={s} save={save} admin={user?.role === 'admin'} /><Rules admin={user?.role === 'admin'} setMsg={setMsg} /></>}
+      {tab === 'oppsett' && <><Setup s={s} save={save} admin={user?.role === 'admin'} /><Rules admin={user?.role === 'admin'} setMsg={setMsg} /><WearSettings admin={user?.role === 'admin'} setMsg={setMsg} /></>}
       {tab === 'integrasjoner' && <div className="dk-box"><p className="muted">Nøkler legges inn som miljøvariabler (Render → Environment). Ingen ekte nøkler ligger i koden. Bruk testmodus først.</p>
         <div className="dk-ints">{d.integrations.map((x) => <div key={x.key} className={'dk-int' + (x.active ? ' on' : '')} data-testid={'dk-int-' + x.key}>
           <div className="dk-int-h"><b>{x.name}</b><span className={'dk-badge' + (x.active ? ' on' : '')}>{x.active ? 'Aktiv' : 'Ikke aktiv'}</span></div>

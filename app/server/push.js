@@ -30,6 +30,6 @@ function setup(db, DATA_DIR) {
     app.post('/api/push/unsubscribe', (req, res) => { db.prepare('delete from push_subs where endpoint=? and person=?').run(req.body?.endpoint || '', me()); res.json({ ok: true }); });
     app.post('/api/push/test', (req, res) => { send(me(), { title: 'mondo 🔔', body: 'Push works!', url: '/#/home' }); res.json({ ok: true }); });
   }
-  return { send, routes, enabled };
+  return { send, routes, enabled, publicKey: enabled ? keys.publicKey : null };
 }
 module.exports = { setup };

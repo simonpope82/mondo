@@ -89,7 +89,7 @@ module.exports.setup = function setup(db, h) {
       const kid = (g(it, 'Kunde') || [])[0], vid = (g(it, 'Kjøretøy') || [])[0];
       const mine = sets.filter((s) => s.status === 'På lager' && ((vid && has(s.bil, vid)) || (!s.bil.length && kid && has(s.kunde, kid))));
       return { id: it.id, board_id: bb.id, name: it.name, time: g(it, 'Tid') || '', service: labelName(C(bb, 'bookinger', 'Tjeneste'), g(it, 'Tjeneste')), addons: g(it, 'Tillegg') || '', regnr: g(it, 'Regnr') || '', phone: g(it, 'Mobil') || '', lift: labelName(C(bb, 'bookinger', 'Løft'), g(it, 'Løft')), status: labelName(C(bb, 'bookinger', 'Status'), g(it, 'Status')), customer: kid ? get(kid)?.name : null,
-        sets: mine.map((s) => ({ id: s.id, location: s.location, season: s.season, dim: s.dim, code: s.code, level: s.level, why: s.why })), fetched: !!(fetchedCol && it.vals[fetchedCol.id]) };
+        sets: mine.map((s) => ({ id: s.id, location: s.location, season: s.season, dim: s.dim, code: s.code, level: s.level, why: s.why })), oncar: sets.filter((s) => s.status === 'På bilen nå' && ((vid && has(s.bil, vid)) || (!s.bil.length && kid && has(s.kunde, kid)))).map((s) => ({ id: s.id, season: s.season, dim: s.dim })), tyre_choice: it.vals[bb.columns.find((c) => c.title === 'Nye dekk-valg')?.id] || '', fetched: !!(fetchedCol && it.vals[fetchedCol.id]) };
     });
   }
   function morningPush() {

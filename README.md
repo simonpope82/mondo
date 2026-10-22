@@ -133,3 +133,10 @@ Workspace **Dekkhotell** with editable template boards (also available under *Ne
   - **Dekk-anbefaling** – the reason.
   - The rules (winter/summer mm, age from DOT) are editable under Oppsett.
 - **Demo customer login:** 40000101 / `demo-kunde` (made-up customer Kari Demo).
+
+## 🛞 Slitte dekk: valg ved booking, varsel til verkstedet, påminnelse (server/dekk-wear.js)
+- Booking (`/book`): når mobil + regnr matcher samme kunde vises «Notat fra forrige gang» (slitasje med mm + kunde-synlig notat) og valgene «Ja, bestill nye dekk til timen / Gi meg et tilbud først / Nei takk». Nye kunder får «Trenger du nye dekk?». Valget lagres i kolonnen «Nye dekk-valg» på Bookinger og vises i «I dag».
+- Verkstedet: «Gamle dekk tatt av» (hjulsett-siden og «I dag») → mønster per hjul. Under grensen: pop-up «Disse dekkene må det bestilles nye dekk til», push til ansatte, Oppgave «Bestill nye dekk» på kunden, påminnelsesdato på hjulsettet.
+- Påminnelse: standard 1. september (Oppsett → «Påminnelse om nye dekk», merket «må avklares»), egen dato per kunde i kolonnen «Påminnelse nye dekk (egen dato)». Varsel til verkstedet + web push til kunden (kun med Min side + varsler på). SMS/e-post bare som utkast.
+- Kunder: «Notat til kunde (synlig)» vises for kunden; «Notat» er internt og vises aldri.
+- Test: `node tests/dekk-wear.mjs <url>` (skjermbilder v4-*).

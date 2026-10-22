@@ -949,3 +949,37 @@ a { color: var(--primary); text-decoration: none; }
 .w2-small{font-size:13px;color:#8b8b93;margin:12px 0 20px}
 @media (max-width:860px){.w2-local{grid-template-columns:1fr}.w2-local-img img{min-height:260px}.w2-radius{flex-direction:column;align-items:flex-start}}
 .w2-rings{width:92px;flex:0 0 92px!important;height:92px!important}
+/* v4 wear / tyre notes */
+.tn-card{margin:14px 0;padding:14px 16px;border-radius:16px;background:#fff8e6;border:1px solid #ffd27a}
+.tn-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:16px}
+.tn-worn{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:#fde8eb;color:#9b1c2e}.tn-worn.lv-Snart{background:#fff0d9;color:#8a5200}
+.tn-worn div{display:flex;flex-direction:column}.tn-worn small{opacity:.85}
+.tn-note{margin:10px 0 0;font-size:15px}
+.tn-choice{margin:16px 0;padding:14px;border-radius:16px;border:1.5px solid #d0d4e4;text-align:left}
+.tn-choice.worn{border-color:#df2f4a;background:#fff5f6}
+.tn-q{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:17px;margin-bottom:10px}.tn-choice.worn .tn-q{color:#c4223a}.tn-q small{color:#676879;font-weight:500}
+.tn-opts{display:grid;gap:8px}
+.tn-opt{min-height:48px;padding:10px 14px;border-radius:12px;border:1.5px solid #c3c6d4;background:#fff;font-size:16px;font-weight:600;text-align:left;cursor:pointer}
+.tn-opt.on{border-color:#0073ea;background:#e5f0ff;color:#0060c7}
+.tn-saved{margin-top:10px;color:#007a4d;font-weight:600;display:flex;gap:6px;align-items:center}
+.tn-notice{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #eee}.tn-notice div{display:flex;flex-direction:column}
+.bk-page.bk-w2 .tn-card{background:#1f1a0e;border-color:#ffb40066;color:#f4f4f5}
+.bk-page.bk-w2 .tn-worn{background:#3a1218;color:#ffb3bd}.bk-page.bk-w2 .tn-worn.lv-Snart{background:#33240a;color:#ffd27a}
+.bk-page.bk-w2 .tn-choice{border-color:#ffffff22;background:#ffffff08}.bk-page.bk-w2 .tn-choice.worn{border-color:#ff5a6e88;background:#2a0f14}
+.bk-page.bk-w2 .tn-choice.worn .tn-q{color:#ff8a98}.bk-page.bk-w2 .tn-q small{color:#a1a1aa}
+.bk-page.bk-w2 .tn-opt{background:#ffffff0d;border-color:#ffffff26;color:#f4f4f5}.bk-page.bk-w2 .tn-opt.on{border-color:var(--acc,#ffb400);background:#ffb40022;color:#ffd27a}
+.bk-page.bk-w2 .tn-saved{color:#5ee0a0}
+.wm-back{position:fixed;inset:0;z-index:10000;background:#0009;display:flex;align-items:center;justify-content:center;padding:16px}
+.wm{position:relative;width:min(460px,100%);background:#fff;border-radius:20px;padding:22px;box-shadow:0 30px 80px #0006;max-height:92vh;overflow:auto}
+.wm h3{display:flex;gap:8px;align-items:center;margin:0 0 4px}.wm-x{position:absolute;right:12px;top:12px;border:0;background:none;cursor:pointer}
+.wm-wheels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.wm-wheels label{display:flex;flex-direction:column;align-items:center;gap:4px}
+.wm-wheels input{width:100%;font-size:24px;font-weight:700;text-align:center;padding:12px 4px;border:2px solid #c3c6d4;border-radius:12px}
+.wm-go{width:100%;justify-content:center;min-height:52px;font-size:17px}
+.wm-alert{text-align:center;color:#fff;background:#d83a52;margin:-22px;padding:28px 22px;border-radius:20px}.wm-alert h2{font-size:24px;line-height:1.2;margin:10px 0}
+.wm-alert ul{list-style:none;padding:0;text-align:left;background:#ffffff22;border-radius:12px;padding:10px 14px;line-height:1.8}.wm-alert .dk-save{background:#fff;color:#d83a52;width:100%;justify-content:center;min-height:50px;font-size:17px}
+.wm-ok{text-align:center}.wm-row{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:10px 0}.wm-row label{display:flex;flex-direction:column;gap:4px}.wm-row select,.wm-row input{padding:8px;border-radius:8px;border:1px solid #c3c6d4;font-size:15px}
+.wm-tx{display:flex;flex-direction:column;gap:2px;margin:8px 0}
+.ts-wear{width:100%;justify-content:center;min-height:54px;font-size:17px;margin-bottom:12px}
+.dl-choice{margin-top:4px;font-weight:600;color:#c4223a}
+.dk-msg.warn{background:#fff0d9;color:#8a5200;border-radius:10px;padding:10px 12px;margin:8px 0}
+.tn-notice svg{flex-shrink:0;width:20px;height:20px;color:#0073ea}

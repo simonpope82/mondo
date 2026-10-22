@@ -344,7 +344,7 @@ app.post('/api/forms/:id', wrap((req, res) => {
 const ASSETS = require('./assets').setup(db, { me, meName, now, notify, insertItem, getBoard, DATA_DIR, auth });
 ASSETS.routes(app, wrap);
 // Dekkhotell: public booking page, invoices (PDF / e-mail drafts), payment links (Stripe/Vipps – inactive without keys)
-const DEKK = require('./dekk').setup(db, { me, now, notify, insertItem, getBoard, itemRow, log, touch, runAutomations: (...a) => runAutomations(...a), DATA_DIR, ASSETS });
+const DEKK = require('./dekk').setup(db, { me, now, notify, insertItem, getBoard, itemRow, log, touch, runAutomations: (...a) => runAutomations(...a), DATA_DIR, ASSETS, push: (p, x) => PUSH.send(p, x), pushKey: () => PUSH.publicKey });
 DEKK.routes(app, wrap);
 
 app.get('/api/health', (req, res) => { try { db.prepare('select 1').get(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false }); } });

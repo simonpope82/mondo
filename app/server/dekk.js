@@ -47,7 +47,7 @@ const defaultSettings = () => ({
   boards: {}, map: {},
 });
 
-module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, itemRow, log, touch, runAutomations, DATA_DIR, ASSETS }) {
+module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, itemRow, log, touch, runAutomations, DATA_DIR, ASSETS, push, pushKey }) {
   db.exec(`create table if not exists dk_outbox(id integer primary key autoincrement, kind text, to_addr text, subject text, body text, attachment text, board_id text, item_id text, status text, created text)`);
   const secretFile = path.join(DATA_DIR, 'dk-pay-secret');
   const SECRET = process.env.PAY_LINK_SECRET || (fs.existsSync(secretFile) ? fs.readFileSync(secretFile, 'utf8') : (() => { const s = crypto.randomBytes(24).toString('hex'); fs.writeFileSync(secretFile, s, { mode: 0o600 }); return s; })());
@@ -261,18 +261,20 @@ module.exports.setup = function setup(db, { now, notify, insertItem, getBoard, i
 
   const labelNameF = (col, id) => labelName(col, id);
   const EXTRA = require('./dekk-extra').setup(db, { now, notify, getBoard, itemRow, log, touch, B, C, label, labelName: labelNameF, items, setVals, settings, saveSettings, osloNow, addDays, nbDate, ASSETS, baseUrl, payToken, outbox: (o) => outbox(o) });
+  const WEAR = require('./dekk-wear').setup(db, { now, notify, getBoard, itemRow, log, touch, B, C, label, labelName: labelNameF, items, setVals, settings, saveSettings, osloNow, outbox: (o) => outbox(o), setInfo: (...a) => EXTRA.setInfo(...a), recompute: (f) => EXTRA.recompute(f), push: push || (async () => {}), pushKey });
   const MAIL = require('./mailin').setup(db, { now, notify, insertItem, getBoard, log, touch, B, C, label, setVals, settings, osloNow, slots, findOrCreateCustomer, findOrCreateVehicle, normReg, nbDate });
   const addMin = (req) => String(req.query.addons || '').split(',').map((id) => (settings().addons || []).find((a) => a.id === id)).filter(Boolean).reduce((a, x) => a + (+x.minutes || 0), 0);
   function routes(app) {
     MAIL.routes(app, { aw, adminOnly, limit });
     EXTRA.routes(app, { aw, adminOnly, limit });
+    WEAR.routes(app, { aw, adminOnly, limit });
     require('./site').routes(app, { db, aw, limit, adminOnly, notify, now, outbox: (o) => outbox(o) });
     // public booking
     app.get('/api/book/config', aw(() => { const s = settings(); const n = osloNow(); return { company: s.company.name, services: s.services, addons: s.addons || [], auto_confirm: s.booking?.auto_confirm !== false, capacity: { slot: s.capacity.slot, days_ahead: s.capacity.days_ahead, hours: s.capacity.hours, closed: s.capacity.closed }, today: n.date, ready: !!B('bookinger') }; }));
     app.get('/api/book/slots', aw((req) => ({ date: req.query.date, slots: slots(String(req.query.date || ''), String(req.query.service || ''), addMin(req)) })));
     app.get('/api/book/days', aw((req) => { const s = settings(); const n = osloNow(); const out = []; for (let k = 0; k <= s.capacity.days_ahead; k++) { const d = addDays(n.date, k); const sl = slots(d, String(req.query.service || ''), addMin(req)); out.push({ date: d, text: nbDate(d), free: sl.filter((x) => x.free > 0).length }); } return { days: out }; }));
     app.get('/api/book/regnr/:nr', aw(async (req) => { limit(req, 120); const r = normReg(req.params.nr); return r.length < 2 ? { found: false } : regLookup(r); }));
-    app.post('/api/book/create', aw((req) => { limit(req, 20); return createBooking(req.body || {}); }));
+    app.post('/api/book/create', aw((req) => { limit(req, 20); const r = createBooking(req.body || {}); WEAR.onBooking(r, req.body || {}); return r; }));
 
     // settings + admin
     app.get('/api/dekk/settings', aw(() => ({ settings: settings(), integrations: integrations() })));
